@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sinh viên - Face Lab</title>
+  <link rel="stylesheet" href="/static/css/dashboard-layout.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/dashboard-components.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/dashboard-features.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/student-dashboard.css?v=face-capture-compact-1" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-icon">FL</div><span>Face Lab System</span></div>
+      <nav>
+        <button class="nav-item active" data-student-page="overview">Tổng quan</button>
+        <button class="nav-item" data-student-page="faceImages">FaceID của tôi</button>
+        <button class="nav-item" data-student-page="attendance">Điểm danh</button>
+        <button class="nav-item" data-student-page="leaveRequests">Đơn nghỉ phép</button>
+        <button class="nav-item" data-student-page="studentReports">Báo cáo của tôi</button>
+        <button class="nav-item" data-student-page="logs">Lịch sử ra/vào</button>
+      </nav>
+      <button id="logoutBtn" class="logout-btn">Đăng xuất</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Tổng quan</h2>
+          <p id="pageSubtitle">Thông tin cá nhân và trạng thái điểm danh hôm nay</p>
+        </div>
+        <div id="currentStudentPill" class="admin-pill role-student">Sinh viên</div>
+      </header>
+
+      <section id="overview" class="page active-page">
+        <div class="stats-grid">
+          <div class="stat-card student-profile-card"><span>Mã sinh viên</span><div id="studentCode" class="student-card-value">...</div></div>
+          <div class="stat-card student-profile-card"><span>Họ tên</span><div id="fullName" class="student-card-value">...</div></div>
+          <div class="stat-card student-profile-card"><span>Lớp</span><div id="className" class="student-card-value">...</div></div>
+          <div class="stat-card student-profile-card"><span>Số ảnh khuôn mặt</span><div id="faceCount" class="student-card-value">...</div></div>
+        </div>
+        <div class="content-grid">
+          <div class="card">
+            <div class="card-header"><h3>Điểm danh hôm nay</h3><button onclick="showStudentPage('attendance')">Xem chi tiết</button></div>
+            <div id="todayAttendanceSummary" class="student-summary-list"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Lịch sử hôm nay</h3><button onclick="showStudentPage('logs')">Xem lịch sử</button></div>
+            <div id="todayLogSummary" class="student-summary-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="faceImages" class="page">
+        <div class="card">
+          <div class="card-header"><div><h3>FaceID của tôi</h3><p class="muted">Ảnh chỉ được dùng để đăng ký FaceID sau khi quản lý duyệt.</p></div><button onclick="loadStudentFaces()">Tải lại</button></div>
+          <div class="student-face-overview">
+            <div class="student-face-tile"><span>Trạng thái</span><strong id="studentFaceStatus">...</strong></div>
+            <div class="student-face-tile"><span>Số mẫu</span><strong id="studentFaceCount">...</strong></div>
+            <div class="student-face-tile"><span>Cập nhật gần nhất</span><strong id="studentFaceLatest">...</strong></div>
+          </div>
+          <div id="studentFaceGallery" class="student-face-gallery">
+            <div class="empty-state">Đang tải ảnh đăng ký...</div>
+          </div>
+          <div id="studentFaceRequestPanel" class="student-face-request-panel"></div>
+        </div>
+      </section>
+
+      <section id="attendance" class="page">
+        <div class="card">
+          <div class="card-header"><h3>Bản ghi điểm danh</h3><button onclick="loadStudentAttendance()">Tải lại</button></div>
+          <div class="filter-panel student-filter">
+            <select id="attendanceStatusFilter">
+              <option value="">Tất cả trạng thái</option>
+              <option value="present_on_time">Đúng giờ</option>
+              <option value="late">Đi muộn</option>
+              <option value="early_leave">Về sớm</option>
+              <option value="late_and_early_leave">Muộn + về sớm</option>
+              <option value="missing_checkout">Thiếu check-out</option>
+              <option value="absent">Vắng</option>
+              <option value="leave_approved">Nghỉ có phép</option>
+              <option value="leave_pending">Chờ duyệt nghỉ</option>
+              <option value="pending">Chưa ghi nhận</option>
+              <option value="unfinalized">Chưa chốt</option>
+              <option value="off_day">Ngày nghỉ</option>
+            </select>
+            <label>Từ ngày<input id="attendanceDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="attendanceDateTo" type="date" /></label>
+            <button onclick="loadStudentAttendance()">Lọc</button>
+            <button class="secondary" onclick="resetStudentAttendanceToday()">Hôm nay</button>
+            <button class="secondary" onclick="clearStudentAttendanceDates()">Tất cả</button>
+            <span id="attendanceCount" class="filter-count"></span>
+          </div>
+          <div class="table-scroll">
+            <table class="attendance-table">
+              <thead>
+                <tr><th>Ngày</th><th>Vào đầu</th><th>Ra cuối</th><th>Trạng thái</th><th>Hiện diện</th><th>Muộn</th><th>Về sớm</th><th>Tổng giờ</th><th>Ghi chú</th></tr>
+              </thead>
+              <tbody id="attendanceRows"><tr><td colspan="9">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="leaveRequests" class="page">
+        <div class="content-grid leave-student-grid">
+          <div class="card form-card leave-request-form">
+            <div class="card-header"><div><h3>Tạo đơn nghỉ phép</h3><p>Đơn chỉ áp dụng từ hôm nay trở đi.</p></div></div>
+            <div class="leave-form-field">
+              <label for="leaveType">Loại nghỉ</label>
+              <select id="leaveType">
+                <option value="sick">Nghỉ ốm</option>
+                <option value="personal">Việc cá nhân</option>
+                <option value="study">Bận học / thi</option>
+                <option value="family">Việc gia đình</option>
+                <option value="other">Khác</option>
+              </select>
+            </div>
+            <div class="leave-date-grid">
+              <div class="leave-form-field"><label for="leaveStartDate">Từ ngày</label><input id="leaveStartDate" type="date" /></div>
+              <div class="leave-form-field"><label for="leaveEndDate">Đến ngày</label><input id="leaveEndDate" type="date" /></div>
+            </div>
+            <div class="leave-form-field"><label for="leaveReason">Lý do</label><textarea id="leaveReason" rows="5" maxlength="500" placeholder="Ví dụ: Em bị sốt, cần nghỉ để đi khám."></textarea><span class="leave-field-help">Tối thiểu 5 ký tự, tối đa 500 ký tự.</span></div>
+            <div class="leave-form-actions"><button type="button" onclick="createLeaveRequest()">Gửi đơn nghỉ phép</button></div>
+            <div id="studentLeaveMessage" class="message"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><h3>Lịch sử đơn nghỉ</h3><p>Theo dõi trạng thái xử lý và phản hồi của phòng lab.</p></div><button class="secondary" onclick="loadStudentLeaveRequests()">Tải lại</button></div>
+            <div class="table-scroll">
+              <table class="attendance-table leave-history-table">
+                <thead><tr><th>Từ ngày</th><th>Đến ngày</th><th>Loại nghỉ</th><th>Lý do</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th></tr></thead>
+                <tbody id="studentLeaveRows"><tr><td colspan="7">Đang tải...</td></tr></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="studentReports" class="page">
+        <div class="content-grid leave-student-grid">
+          <div class="card form-card student-report-form">
+            <div class="card-header"><div><h3>Nộp báo cáo mới</h3><p>Gửi báo cáo trực tiếp cho giáo viên/lab manager.</p></div></div>
+            <div class="leave-form-field"><label for="studentReportTitle">Tiêu đề *</label><input id="studentReportTitle" maxlength="180" placeholder="Ví dụ: Báo cáo tiến độ tuần 3" /></div>
+            <div class="leave-form-field"><label for="studentReportType">Loại báo cáo *</label><select id="studentReportType"><option value="weekly">Báo cáo tuần</option><option value="monthly">Báo cáo tháng</option><option value="project_progress">Tiến độ đề tài</option><option value="research">Tài liệu nghiên cứu</option><option value="demo">Demo hệ thống</option><option value="other">Khác</option></select></div>
+            <div class="leave-form-field"><label for="studentReportReviewer">Giáo viên nhận báo cáo *</label><select id="studentReportReviewer"><option value="">Đang tải danh sách...</option></select></div>
+            <div class="leave-form-field"><label for="studentReportDescription">Mô tả</label><textarea id="studentReportDescription" rows="5" maxlength="5000" placeholder="Tóm tắt công việc, kết quả và phần cần được góp ý..."></textarea></div>
+            <div class="leave-form-field"><label for="studentReportLink">Link GitHub / Drive <span class="muted">(không bắt buộc)</span></label><input id="studentReportLink" type="url" maxlength="2000" placeholder="Để trống nếu không có link; hoặc nhập https://..." /></div>
+            <div class="leave-form-field"><label for="studentReportAttachment">File đính kèm <span class="muted">(không bắt buộc nếu đã có link)</span></label><input id="studentReportAttachment" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xlsx,.zip,.png,.jpg,.jpeg" /><span class="leave-field-help">Chỉ cần một trong hai: file hoặc link. Nếu đã chọn file, hãy để trống ô link khi không có GitHub/Drive. Tối đa 20 MB.</span></div>
+            <div class="leave-form-actions"><button type="button" onclick="submitStudentReport()">Gửi báo cáo</button></div>
+            <div id="studentReportMessage" class="message"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><div><h3>Báo cáo đã nộp</h3><p class="muted">Theo dõi phản hồi và nộp lại khi được yêu cầu chỉnh sửa.</p></div><button class="secondary" onclick="loadStudentReports()">Tải lại</button></div>
+            <div class="table-scroll"><table class="leave-history-table"><thead><tr><th>Tiêu đề</th><th>Giáo viên</th><th>Loại</th><th>Lần nộp</th><th>Trạng thái</th><th>Phản hồi</th><th></th></tr></thead><tbody id="studentReportRows"><tr><td colspan="7">Đang tải...</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="logs" class="page">
+        <div class="card logs-card">
+          <div class="card-header"><h3>Lịch sử ra/vào</h3><button onclick="loadStudentLogs()">Tải lại</button></div>
+          <div class="filter-panel student-filter">
+            <select id="logActionFilter">
+              <option value="">Tất cả hành động</option>
+              <option value="check_in">Check-in</option>
+              <option value="check_out">Check-out</option>
+            </select>
+            <select id="logResultFilter">
+              <option value="">Tất cả kết quả</option>
+              <option value="success">Thành công</option>
+              <option value="denied">Không ghi nhận</option>
+              <option value="warning">Cảnh báo</option>
+            </select>
+            <label>Từ ngày<input id="logDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="logDateTo" type="date" /></label>
+            <button onclick="loadStudentLogs()">Lọc</button>
+            <button class="secondary" onclick="resetStudentLogsToday()">Hôm nay</button>
+            <button class="secondary" onclick="clearStudentLogDates()">Tất cả</button>
+            <span id="logsCount" class="filter-count"></span>
+          </div>
+          <div id="logsTimeline" class="logs-timeline"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="studentFaceModal" class="modal hidden">
+    <div class="modal-content evidence-modal-content">
+      <div class="card-header"><h3>Ảnh đăng ký</h3><button class="secondary" onclick="closeStudentFaceModal()">Đóng</button></div>
+      <img id="studentFaceModalImg" class="evidence-modal-img" src="" alt="Ảnh đăng ký" />
+    </div>
+  </div>
+
+  <div id="studentFaceRequestCaptureModal" class="modal hidden">
+    <div class="modal-content student-face-capture-modal-content">
+      <div class="card-header"><div><h3 id="studentFaceRequestModalTitle">Gửi yêu cầu đăng ký FaceID</h3><p id="studentFaceCaptureHint" class="muted">Chụp đủ 5 tư thế theo hướng dẫn.</p></div><button class="secondary" type="button" onclick="closeStudentFaceRequestCapture()">Đóng</button></div>
+      <div class="student-face-capture-grid">
+        <div><div class="video-wrap register-video-wrap"><video id="studentFaceRequestVideo" autoplay playsinline muted></video><canvas id="studentFaceRequestCanvas" aria-hidden="true"></canvas></div><div class="register-actions"><button id="studentFaceStartScanBtn" type="button" onclick="startStudentFaceRequestScan()">Bắt đầu quét tự động</button><button id="studentFaceCaptureBtn" class="secondary" type="button" onclick="captureStudentFaceRequestImage()">Chụp thủ công</button><button class="secondary" type="button" onclick="restartStudentFaceRequestCapture()">Chụp lại từ đầu</button></div></div>
+        <div><div id="studentFaceCaptureSteps" class="scan-steps"></div><p class="muted">Chụp ở nơi đủ sáng, không che mặt và giữ khuôn mặt trong khung hình.</p></div>
+      </div>
+      <div id="studentFaceCaptureMessage" class="message student-face-capture-message" aria-live="polite"></div>
+      <div id="studentFaceCapturePreview" class="student-face-request-preview"></div>
+      <div class="leave-form-field"><label for="studentFaceRequestNote">Ghi chú cho quản lý <span class="muted">(không bắt buộc)</span></label><textarea id="studentFaceRequestNote" rows="3" maxlength="500" placeholder="Ví dụ: Em gửi yêu cầu đăng ký FaceID để điểm danh."></textarea></div>
+      <label class="student-face-consent"><input id="studentFaceRequestConsent" type="checkbox" /><span class="student-face-consent-check" aria-hidden="true"></span><span>Tôi xác nhận đây là ảnh khuôn mặt của tôi và đồng ý gửi để đăng ký FaceID.</span></label>
+      <div class="modal-actions student-face-submit-actions"><button id="studentFaceSubmitRequestBtn" type="button" onclick="submitStudentFaceRequest()" disabled>Gửi yêu cầu</button></div>
+    </div>
+  </div>
+
+  <div id="studentReportDetailModal" class="modal hidden">
+    <div class="modal-content student-report-detail-modal">
+      <div class="card-header"><div><h3>Chi tiết báo cáo</h3><p id="studentReportDetailMeta" class="muted"></p></div><button class="secondary" type="button" onclick="closeStudentReportDetail()">Đóng</button></div>
+      <div id="studentReportDetailBody"></div>
+      <div id="studentReportResubmitPanel" class="hidden student-report-resubmit">
+        <h4>Nộp lại báo cáo</h4>
+        <div class="leave-form-field"><label for="studentReportResubmitDescription">Ghi chú lần nộp lại</label><textarea id="studentReportResubmitDescription" rows="3" maxlength="5000"></textarea></div>
+        <div class="leave-form-field"><label for="studentReportResubmitLink">Link mới <span class="muted">(không bắt buộc)</span></label><input id="studentReportResubmitLink" type="url" maxlength="2000" placeholder="Để trống nếu không có link; hoặc nhập https://..." /></div>
+        <div class="leave-form-field"><label for="studentReportResubmitAttachment">File mới <span class="muted">(không bắt buộc nếu đã có link)</span></label><input id="studentReportResubmitAttachment" type="file" accept=".pdf,.doc,.docx,.ppt,.pptx,.xlsx,.zip,.png,.jpg,.jpeg" /></div>
+        <div class="modal-actions"><button type="button" onclick="resubmitStudentReport()">Nộp lại</button></div>
+      </div>
+      <div id="studentReportDetailMessage" class="message"></div>
+    </div>
+  </div>
+
+  <script src="/static/js/student-dashboard.js?v=leave-submit-2"></script>
+  <script src="/static/js/student-leave-requests.js?v=leave-requests-1"></script>
+  <script src="/static/js/student-reports.js?v=student-reports-1"></script>
+  <script src="/static/js/student-face-registration.js?v=face-registration-start-scan-1"></script>
+</body>
+</html>

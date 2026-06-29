@@ -1,0 +1,24 @@
+.env
+__pycache__/
+*.pyc
+
+data/*.db
+data/backups/
+data/*.log
+data/debug_liveness_crop/
+
+storage/private/
+
+web/static/uploads/faces/
+web/static/uploads/evidence/
+
+server_stdout.log
+server_stderr.log
+
+*.zip
+dist/
+
+# Local packaging/helper scripts
+TAO_BAN_CODE_DE_GUI.cmd
+make_clean_zip.ps1
+make_students_faces_env_zip.ps1

@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Face Lab Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard-layout.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/dashboard-components.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/dashboard-features.css?v=settings-layout-3" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-icon">FL</div><span>Face Lab System</span></div>
+      <nav>
+        <button class="nav-item active" data-page="dashboard">Tổng quan</button>
+        <button class="nav-item" data-page="students">Sinh viên</button>
+        <button class="nav-item" data-page="face-register">Đăng ký khuôn mặt</button>
+        <button class="nav-item" data-page="camera">Camera realtime</button>
+        <button class="nav-item" data-page="logs">Lịch sử ra/vào</button>
+        <button class="nav-item" data-page="attendance">Điểm danh</button>
+        <button id="workScheduleNavBtn" class="nav-item" data-page="workSchedule">Lịch làm việc</button>
+        <button class="nav-item" data-page="leaveRequests">Duyệt nghỉ phép</button>
+        <button class="nav-item" data-page="studentReports">Báo cáo sinh viên</button>
+        <button class="nav-item" data-page="alerts">Cảnh báo</button>
+        <button id="userManageBtn" class="nav-item" data-page="accounts">Tài khoản</button>
+        <button id="settingsNavBtn" class="nav-item" data-page="settings">Cài đặt hệ thống</button>
+        <button id="auditNavBtn" class="nav-item" data-page="audit">Nhật ký hoạt động</button>
+      </nav>
+      <button id="logoutBtn" class="logout-btn">Đăng xuất</button>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <h2 id="pageTitle">Tổng quan</h2>
+          <p id="pageSubtitle">Tổng quan hệ thống nhận diện ra/vào lab</p>
+        </div>
+        <div id="currentUserPill" class="admin-pill">Xin chào</div>
+      </header>
+
+      <section id="dashboard" class="page active-page">
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="content-grid">
+          <div class="card large-card">
+            <div class="card-header"><h3>Lịch sử gần nhất</h3><button onclick="showPage('logs')">Xem tất cả</button></div>
+            <table><thead><tr><th>Thời gian</th><th>Sinh viên</th><th>Hành động</th><th>Kết quả</th></tr></thead><tbody id="recentLogs"></tbody></table>
+          </div>
+          <div class="side-stack">
+            <div class="card"><h3>Hoạt động camera</h3><p>Camera source: Browser camera</p><p>Chế độ: <b>Check-in + Check-out</b></p><p><span class="dot"></span> Đang sẵn sàng</p></div>
+            <div class="card"><h3>Thông báo nhanh</h3><p id="quickNotice">Không có lỗi hệ thống nghiêm trọng</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="students" class="page">
+        <div class="card">
+          <div class="card-header"><h3>Quản lý sinh viên</h3><button id="addStudentBtn" onclick="openStudentModal()">Thêm sinh viên</button></div>
+          <p id="studentsRoleHint" class="muted"></p>
+          <input class="search-input" id="studentSearch" placeholder="Tìm theo mã sinh viên hoặc họ tên" />
+          <table><thead><tr><th>Mã SV</th><th>Họ tên</th><th>Chuyên ngành</th><th>Trạng thái</th><th>Khuôn mặt</th><th>Giờ làm việc</th><th>Hành động</th></tr></thead><tbody id="studentsTable"></tbody></table>
+        </div>
+      </section>
+
+      <section id="face-register" class="page">
+        <div class="face-request-tabs" role="tablist" aria-label="Đăng ký khuôn mặt">
+          <button id="manualFaceRegistrationTab" class="active" type="button" onclick="setFaceRegistrationTab('manual')">Đăng ký thủ công</button>
+          <button id="faceRequestReviewTab" type="button" onclick="setFaceRegistrationTab('requests')">Yêu cầu chờ duyệt</button>
+        </div>
+        <div id="manualFaceRegistrationPanel">
+        <div class="card form-card face-register-meta">
+          <h3>Chọn sinh viên cần đăng ký</h3>
+          <label>Sinh viên</label>
+          <select id="faceStudentSelect"></select>
+          <div class="face-sample-summary">
+            <button id="faceSampleCount" class="face-sample-count-btn" type="button" onclick="openFaceGallery()">0/10 mẫu</button>
+            <span id="faceSampleStatusText">Chọn sinh viên để xem bộ mẫu.</span>
+          </div>
+        </div>
+        <div class="face-register-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>Quét khuôn mặt bằng camera</h3>
+              <div>
+                <button id="faceRegisterToggleBtn" onclick="toggleFaceRegisterCamera()">Bật camera</button>
+              </div>
+            </div>
+            <div class="face-mode-tabs" role="tablist" aria-label="Chế độ đăng ký khuôn mặt">
+              <button id="faceModeAppendBtn" class="active" type="button" onclick="setFaceRegisterMode('append')">Thêm mẫu</button>
+              <button id="faceModeReplaceBtn" type="button" onclick="setFaceRegisterMode('replace')">Quét lại 5 tư thế</button>
+            </div>
+            <p id="faceModeHint" class="face-mode-hint"></p>
+            <div class="scan-guide">
+              <div id="scanGuideCurrent" class="scan-current"></div>
+              <div id="scanGuideSteps" class="scan-steps"></div>
+            </div>
+            <div class="video-wrap register-video-wrap">
+              <video id="faceRegisterVideo" autoplay playsinline muted></video>
+              <canvas id="faceRegisterCanvas" aria-hidden="true"></canvas>
+            </div>
+            <div class="register-actions">
+              <button id="captureStepBtn" onclick="captureFaceFromCamera()">Chụp thêm mẫu</button>
+              <button id="resetFaceScanBtn" class="secondary" onclick="resetFaceScanProgress()">Làm lại từ đầu</button>
+            </div>
+            <div id="faceRegisterMessage" class="message"></div>
+          </div>
+          <div class="card supplemental-face-card">
+            <div class="card-header">
+              <h3>Thêm mẫu từ máy</h3>
+            </div>
+            <input id="supplementalFaceInput" type="file" accept="image/*" multiple />
+            <div class="register-actions">
+              <button onclick="uploadSupplementalFaces()">Thêm ảnh vào bộ mẫu</button>
+            </div>
+            <p class="muted">Ảnh cần có đúng 1 khuôn mặt, đủ sáng, đủ nét và không quá xa camera.</p>
+            <p class="muted">Ảnh bổ sung sẽ được thêm vào embedding hiện có và tự động giữ tối đa 10 mẫu mới nhất.</p>
+            <div id="supplementalFaceMessage" class="message"></div>
+          </div>
+        </div>
+        </div>
+        <div id="faceRequestReviewPanel" class="hidden">
+          <div class="card">
+            <div class="card-header"><div><h3>Yêu cầu đăng ký FaceID</h3><p class="muted">Chỉ duyệt khi ảnh đúng sinh viên, đủ rõ và đủ 5 tư thế.</p></div><button class="secondary" onclick="loadFaceRegistrationRequests()">Tải lại</button></div>
+            <div class="filter-panel">
+              <select id="faceRequestStatusFilter" onchange="loadFaceRegistrationRequests()">
+                <option value="pending">Chờ duyệt</option>
+                <option value="">Tất cả trạng thái</option>
+                <option value="approved">Đã duyệt</option>
+                <option value="rejected">Từ chối</option>
+                <option value="cancelled">Đã hủy</option>
+              </select>
+              <input id="faceRequestSearch" class="search-input" placeholder="Tìm mã SV, họ tên hoặc lớp" />
+              <button type="button" onclick="loadFaceRegistrationRequests()">Lọc</button>
+              <span id="faceRequestCount" class="filter-count"></span>
+            </div>
+            <div class="table-scroll"><table><thead><tr><th>Sinh viên</th><th>Loại yêu cầu</th><th>Lớp</th><th>Gửi lúc</th><th>Trạng thái</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody id="faceRequestRows"><tr><td colspan="7">Chọn tab để tải yêu cầu.</td></tr></tbody></table></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="camera" class="page">
+        <div class="card">
+          <div class="card-header">
+            <h3>Camera realtime</h3>
+            <div class="camera-actions">
+              <button id="checkInToggleBtn" onclick="toggleRealtimeCamera('check_in')">Vào on</button>
+              <button id="checkOutToggleBtn" onclick="toggleRealtimeCamera('check_out')">Out on</button>
+              <button class="secondary" onclick="stopAllRealtimeCameras()">Tắt hết</button>
+            </div>
+          </div>
+          <div class="dual-camera-grid">
+            <div class="camera-panel">
+              <div class="camera-panel-header"><h4>Check-in</h4><span id="checkInCameraLabel">Chưa bật</span></div>
+              <div class="video-wrap"><video id="checkInVideo" autoplay playsinline muted></video><canvas id="checkInOverlay"></canvas></div>
+              <div id="checkInResult" class="camera-result">Chưa bật camera</div>
+            </div>
+            <div class="camera-panel">
+              <div class="camera-panel-header"><h4>Check-out</h4><span id="checkOutCameraLabel">Chưa bật</span></div>
+              <div class="video-wrap"><video id="checkOutVideo" autoplay playsinline muted></video><canvas id="checkOutOverlay"></canvas></div>
+              <div id="checkOutResult" class="camera-result">Chưa bật camera</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="logs" class="page">
+        <div class="card logs-card">
+          <div class="card-header"><h3>Lịch sử ra/vào</h3><button onclick="loadLogs()">Tải lại</button></div>
+          <div class="filter-panel">
+            <input id="logSearch" class="search-input" placeholder="Tìm mã SV, họ tên, ghi chú" />
+            <select id="logActionFilter">
+              <option value="">Tất cả hành động</option>
+              <option value="check_in">Check-in</option>
+              <option value="check_out">Check-out</option>
+            </select>
+            <select id="logResultFilter">
+              <option value="">Tất cả kết quả</option>
+              <option value="success">Thành công</option>
+              <option value="denied">Không ghi nhận</option>
+              <option value="warning">Cảnh báo</option>
+            </select>
+            <label>Từ ngày<input id="logDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="logDateTo" type="date" /></label>
+            <button onclick="loadLogs()">Lọc</button>
+            <button class="secondary" onclick="resetLogFilters()">Hôm nay</button>
+            <span id="logsCount" class="filter-count"></span>
+          </div>
+          <div id="logsTimeline" class="logs-timeline"></div>
+        </div>
+      </section>
+
+      <section id="attendance" class="page">
+        <div class="card attendance-card">
+          <div class="card-header">
+            <h3>Điểm danh</h3>
+            <div>
+              <button onclick="loadAttendanceRecords()">Tải lại</button>
+            </div>
+          </div>
+          <div class="filter-panel">
+            <input id="attendanceSearch" class="search-input" placeholder="Tìm mã SV hoặc họ tên" />
+            <select id="attendanceStatusFilter">
+              <option value="">Tất cả trạng thái</option>
+              <option value="present_on_time">Đúng giờ</option>
+              <option value="late">Đi muộn</option>
+              <option value="early_leave">Về sớm</option>
+              <option value="late_and_early_leave">Muộn + về sớm</option>
+              <option value="missing_checkout">Thiếu check-out</option>
+              <option value="absent">Vắng</option>
+              <option value="leave_approved">Nghỉ có phép</option>
+              <option value="leave_pending">Chờ duyệt nghỉ</option>
+              <option value="pending">Chưa ghi nhận</option>
+              <option value="unfinalized">Chưa chốt</option>
+              <option value="off_day">Ngày nghỉ</option>
+            </select>
+            <label>Từ ngày<input id="attendanceDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="attendanceDateTo" type="date" /></label>
+            <button onclick="loadAttendanceRecords()">Lọc</button>
+            <button class="secondary" onclick="resetAttendanceFilters()">Hôm nay</button>
+            <span id="attendanceCount" class="filter-count"></span>
+          </div>
+          <div class="table-scroll">
+            <table class="attendance-table">
+              <thead>
+                <tr>
+                  <th>Ngày</th>
+                  <th>Sinh viên</th>
+                  <th>Vào</th>
+                  <th>Ra</th>
+                  <th>Trạng thái</th>
+                  <th>Hiện diện</th>
+                  <th>Muộn</th>
+                  <th>Về sớm</th>
+                  <th>Tổng giờ</th>
+                  <th>Ghi chú</th>
+                  <th>Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTable"></tbody>
+            </table>
+          </div>
+          <div id="attendanceMessage" class="message"></div>
+        </div>
+      </section>
+
+      <section id="workSchedule" class="page">
+        <div class="schedule-today-grid">
+          <article class="schedule-summary-card">
+            <span class="schedule-summary-label">Hôm nay</span>
+            <strong id="workScheduleTodayDate">--/--/----</strong>
+            <small id="workScheduleTodayWeekday">Đang tải lịch...</small>
+          </article>
+          <article class="schedule-summary-card">
+            <span class="schedule-summary-label">Trạng thái</span>
+            <strong id="workScheduleTodayStatus">--</strong>
+            <small id="workScheduleTodayNote">--</small>
+          </article>
+          <article class="schedule-summary-card">
+            <span class="schedule-summary-label">Giờ áp dụng</span>
+            <strong id="workScheduleTodayHours">--:-- - --:--</strong>
+            <small id="workScheduleTodayGrace">--</small>
+          </article>
+        </div>
+
+        <div class="work-schedule-layout">
+          <div class="card work-schedule-config-card">
+            <div class="card-header"><div><h3>Lịch làm việc mặc định</h3><p class="muted">Ngày nghỉ đặc biệt luôn được ưu tiên hơn lịch tuần.</p></div></div>
+            <div class="work-schedule-form">
+              <label>Áp dụng từ ngày<input id="workScheduleEffectiveFrom" type="date" /></label>
+              <div class="workday-toggle-grid">
+                <label><input id="workScheduleMonday" type="checkbox" /> Thứ 2</label>
+                <label><input id="workScheduleTuesday" type="checkbox" /> Thứ 3</label>
+                <label><input id="workScheduleWednesday" type="checkbox" /> Thứ 4</label>
+                <label><input id="workScheduleThursday" type="checkbox" /> Thứ 5</label>
+                <label><input id="workScheduleFriday" type="checkbox" /> Thứ 6</label>
+                <label><input id="workScheduleSaturday" type="checkbox" /> Thứ 7</label>
+                <label><input id="workScheduleSunday" type="checkbox" /> Chủ nhật</label>
+              </div>
+              <div class="work-schedule-time-grid">
+                <label>Giờ bắt đầu<input id="workScheduleStartTime" type="time" /></label>
+                <label>Giờ kết thúc<input id="workScheduleEndTime" type="time" /></label>
+                <label>Cho phép đi muộn (phút)<input id="workScheduleLateMinutes" type="number" min="0" max="240" /></label>
+                <label>Cho phép về sớm (phút)<input id="workScheduleEarlyMinutes" type="number" min="0" max="240" /></label>
+                <label>Giờ chốt thiếu check-out<input id="workScheduleCutoffTime" type="time" /></label>
+              </div>
+              <button id="saveWorkScheduleBtn" type="button" onclick="saveWorkSchedule()">Lưu lịch làm việc</button>
+              <div id="workScheduleMessage" class="message"></div>
+            </div>
+          </div>
+
+          <div class="card work-schedule-exceptions-card">
+            <div class="card-header"><div><h3>Ngày nghỉ đặc biệt</h3><p class="muted">Ngày nghỉ này không tính vắng, muộn hoặc thiếu check-out.</p></div></div>
+            <input id="workScheduleExceptionId" type="hidden" />
+            <div class="exception-form-grid">
+              <label>Ngày nghỉ<input id="workScheduleExceptionDate" type="date" /></label>
+              <label>Tên ngày nghỉ<input id="workScheduleExceptionName" maxlength="120" placeholder="Ví dụ: Nghỉ lễ 30/4" /></label>
+              <label class="exception-note-field">Ghi chú<input id="workScheduleExceptionNote" maxlength="500" placeholder="Ví dụ: Nghỉ toàn lab" /></label>
+            </div>
+            <div class="exception-actions"><button id="saveWorkScheduleExceptionBtn" type="button" onclick="saveWorkScheduleException()">Thêm ngày nghỉ</button><button id="cancelWorkScheduleExceptionBtn" type="button" class="secondary" onclick="resetWorkScheduleExceptionForm()" hidden>Hủy sửa</button></div>
+            <div id="workScheduleExceptionMessage" class="message"></div>
+            <div class="table-scroll schedule-exception-table-wrap">
+              <table class="attendance-table"><thead><tr><th>Ngày</th><th>Tên ngày nghỉ</th><th>Ghi chú</th><th>Thao tác</th></tr></thead><tbody id="workScheduleExceptionRows"><tr><td colspan="4">Đang tải...</td></tr></tbody></table>
+            </div>
+          </div>
+
+          <div class="card work-schedule-calendar-card">
+            <div class="card-header schedule-calendar-header"><button class="secondary" type="button" onclick="moveWorkScheduleMonth(-1)">‹</button><div><h3 id="workScheduleCalendarTitle">Tháng --/----</h3><p class="muted">Xem trước lịch áp dụng</p></div><button class="secondary" type="button" onclick="moveWorkScheduleMonth(1)">›</button></div>
+            <div class="work-schedule-weekdays"><span>T2</span><span>T3</span><span>T4</span><span>T5</span><span>T6</span><span>T7</span><span>CN</span></div>
+            <div id="workScheduleCalendarGrid" class="work-schedule-calendar-grid"></div>
+            <div class="schedule-calendar-legend"><span><i class="calendar-legend working"></i>Ngày làm việc</span><span><i class="calendar-legend weekend"></i>Ngày nghỉ theo lịch</span><span><i class="calendar-legend holiday"></i>Ngày nghỉ đặc biệt</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="leaveRequests" class="page">
+        <div class="card">
+          <div class="card-header"><h3>Đơn nghỉ phép</h3><button onclick="loadLeaveRequests()">Tải lại</button></div>
+          <div class="filter-panel">
+            <input id="leaveSearch" class="search-input" placeholder="Tìm mã SV hoặc họ tên" />
+            <select id="leaveStatusFilter">
+              <option value="">Tất cả trạng thái</option><option value="pending">Chờ duyệt</option><option value="approved">Đã duyệt</option><option value="rejected">Từ chối</option><option value="cancelled">Đã hủy</option><option value="revoked">Đã thu hồi</option>
+            </select>
+            <select id="leaveTypeFilter">
+              <option value="">Tất cả loại nghỉ</option><option value="sick">Nghỉ ốm</option><option value="personal">Việc cá nhân</option><option value="study">Bận học / thi</option><option value="family">Việc gia đình</option><option value="other">Khác</option>
+            </select>
+            <label>Từ ngày<input id="leaveDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="leaveDateTo" type="date" /></label>
+            <button onclick="loadLeaveRequests()">Lọc</button>
+            <span id="leaveCount" class="filter-count"></span>
+          </div>
+          <div class="table-scroll">
+            <table class="attendance-table">
+              <thead><tr><th>Sinh viên</th><th>Loại nghỉ</th><th>Từ ngày</th><th>Đến ngày</th><th>Lý do</th><th>Trạng thái</th><th>Người xử lý / ghi chú</th><th>Thao tác</th></tr></thead>
+              <tbody id="leaveTable"><tr><td colspan="8">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="studentReports" class="page">
+        <div class="card">
+          <div class="card-header"><div><h3>Báo cáo sinh viên</h3><p class="muted">Lab manager xem báo cáo được gửi cho mình; admin chỉ giám sát và xử lý thay khi cần.</p></div><button class="secondary" onclick="loadStaffReports()">Tải lại</button></div>
+          <div class="filter-panel">
+            <input id="staffReportSearch" class="search-input" placeholder="Tìm mã SV, họ tên hoặc tiêu đề" />
+            <select id="staffReportStatus"><option value="">Tất cả trạng thái</option><option value="submitted">Chờ xem</option><option value="revision_requested">Cần chỉnh sửa</option><option value="approved">Đã duyệt</option></select>
+            <select id="staffReportType"><option value="">Tất cả loại</option><option value="weekly">Báo cáo tuần</option><option value="monthly">Báo cáo tháng</option><option value="project_progress">Tiến độ đề tài</option><option value="research">Tài liệu nghiên cứu</option><option value="demo">Demo hệ thống</option><option value="other">Khác</option></select>
+            <button onclick="loadStaffReports()">Lọc</button><span id="staffReportCount" class="filter-count"></span>
+          </div>
+          <div class="table-scroll"><table class="attendance-table"><thead><tr><th>Sinh viên</th><th>Tiêu đề</th><th>Loại</th><th>Nộp lúc</th><th>Trạng thái</th><th>Phản hồi</th><th></th></tr></thead><tbody id="staffReportRows"><tr><td colspan="7">Chọn mục để tải báo cáo.</td></tr></tbody></table></div>
+        </div>
+      </section>
+
+      <section id="alerts" class="page">
+        <div class="card">
+          <div class="card-header"><h3>Cảnh báo</h3><div><button class="secondary" onclick="scanMissingCheckouts()">Quét thiếu check-out</button><button onclick="loadAlerts()">Tải lại</button></div></div>
+          <div class="filter-panel">
+            <input id="alertSearch" class="search-input" placeholder="Tìm kiếm cảnh báo" />
+            <select id="alertTypeFilter">
+              <option value="">Tất cả loại</option>
+              <option value="unknown_face">Khuôn mặt lạ</option>
+              <option value="spoof_detected">Nghi giả mạo</option>
+              <option value="missing_checkout">Thiếu check-out</option>
+            </select>
+            <select id="alertStatusFilter">
+              <option value="">Tất cả trạng thái</option>
+              <option value="new">Chưa xử lí</option>
+              <option value="resolved">Đã xử lí</option>
+              <option value="ignored">Bỏ qua</option>
+            </select>
+            <label>Từ ngày<input id="alertDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="alertDateTo" type="date" /></label>
+            <button onclick="loadAlerts()">Lọc</button>
+            <button class="secondary" onclick="resetAlertFilters()">Hôm nay</button>
+            <span id="alertsCount" class="filter-count"></span>
+          </div>
+          <div class="table-scroll">
+            <table class="alerts-table">
+              <thead><tr><th>Thời gian</th><th>Loại</th><th>Nội dung</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+              <tbody id="alertsTable"></tbody>
+            </table>
+          </div>
+          <div id="alertsMessage" class="message"></div>
+        </div>
+      </section>
+
+      <section id="accounts" class="page">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3>Quản lý tài khoản</h3>
+              <p id="accountRoleHint" class="muted">Quản lý tài khoản đăng nhập theo đúng vai trò vận hành.</p>
+            </div>
+          </div>
+          <div class="account-form-grid">
+            <label>Username<input id="accountUsername" placeholder="VD: sv001" /></label>
+            <label>Password<input id="accountPassword" type="password" placeholder="Tối thiểu 6 ký tự" /></label>
+            <label>Vai trò
+              <select id="accountRole" onchange="toggleAccountStudentSelect()"></select>
+            </label>
+            <label id="accountStudentBox">Liên kết sinh viên
+              <select id="accountStudentId"></select>
+            </label>
+          </div>
+          <div class="account-actions">
+            <button onclick="createAccountUser()">Tạo tài khoản</button>
+            <span id="accountMessage" class="message inline-message"></span>
+          </div>
+          <p class="muted">Khóa tài khoản nghĩa là tài khoản đó không đăng nhập được nữa; dữ liệu sinh viên, log và điểm danh vẫn được giữ nguyên.</p>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Danh sách tài khoản</h3><button class="secondary" onclick="loadAccountUsers()">Tải lại</button></div>
+          <div class="table-scroll">
+            <table class="accounts-table">
+              <thead><tr><th>ID</th><th>Username</th><th>Role</th><th>Sinh viên liên kết</th><th>Trạng thái</th><th>Ngày tạo</th><th>Thao tác</th></tr></thead>
+              <tbody id="accountRows"><tr><td colspan="7">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings" class="page">
+        <div class="card form-card">
+          <h3>Cài đặt hệ thống</h3>
+          <label>Ngưỡng nhận diện</label><input id="settingThreshold" type="number" step="0.01" />
+          <label>Cooldown ghi log, giây</label><input id="settingCooldown" type="number" />
+          <label>Frame skip</label><input id="settingFrameSkip" type="number" />
+           <label>Camera cho Check-in</label><select id="settingCheckInCamera"></select>
+           <label>Camera cho Check-out</label><select id="settingCheckOutCamera"></select>
+           <button type="button" class="secondary" onclick="loadCameraDevices()">Tải lại danh sách camera</button>
+           <div class="settings-server-camera">
+             <h4>Camera server</h4>
+             <label class="settings-toggle"><input id="settingAutoStartCameras" type="checkbox" /><span>Tự động chạy camera server khi khởi động</span></label>
+             <label>Nguồn server camera Check-in</label><input id="settingCheckInCameraSource" placeholder="0 hoặc rtsp://user:pass@ip:554/stream" />
+             <label>Nguồn server camera Check-out</label><input id="settingCheckOutCameraSource" placeholder="1 hoặc rtsp://user:pass@ip:554/stream" />
+           </div>
+           <div class="settings-liveness">
+             <h4>Chống giả mạo</h4>
+             <label class="settings-toggle"><input id="settingLivenessEnabled" type="checkbox" /><span>Bật chống giả mạo khuôn mặt</span></label>
+             <p id="livenessModelStatus" class="muted">Đang kiểm tra model chống giả mạo...</p>
+           </div>
+           <button onclick="saveSettings()">Lưu cài đặt</button>
+          <div id="settingsMessage" class="message"></div>
+        </div>
+      </section>
+
+      <section id="audit" class="page">
+        <div class="card">
+          <div class="card-header"><h3>Nhật ký hoạt động</h3><button class="secondary" onclick="loadAuditLogs()">Tải lại</button></div>
+          <div class="filter-panel">
+            <input id="auditSearch" class="search-input" placeholder="Tìm hoạt động, người hoặc nội dung" />
+            <input id="auditActor" class="search-input" placeholder="Người thực hiện" />
+            <input id="auditAction" class="search-input" placeholder="Mã hoạt động, ví dụ auth.login_failed" />
+            <select id="auditEntityType">
+              <option value="">Tất cả nội dung liên quan</option>
+              <option value="user">Tài khoản</option>
+              <option value="student">Sinh viên</option>
+              <option value="student_face">Ảnh khuôn mặt</option>
+              <option value="leave_request">Đơn nghỉ phép</option>
+              <option value="settings">Cấu hình</option>
+              <option value="work_schedule">Lịch làm việc</option>
+              <option value="work_schedule_exception">Ngày nghỉ đặc biệt</option>
+              <option value="access_log">Log ra vào</option>
+              <option value="attendance_record">Chấm công</option>
+              <option value="alert">Cảnh báo</option>
+            </select>
+            <label>Từ ngày<input id="auditDateFrom" type="date" /></label>
+            <label>Đến ngày<input id="auditDateTo" type="date" /></label>
+            <button onclick="loadAuditLogs()">Lọc</button>
+            <button class="secondary" onclick="resetAuditFilters()">Hôm nay</button>
+            <span id="auditCount" class="filter-count"></span>
+          </div>
+          <div class="table-scroll">
+            <table class="audit-table">
+              <thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Hoạt động</th><th>Liên quan đến</th><th>Nội dung</th><th>IP</th></tr></thead>
+              <tbody id="auditRows"><tr><td colspan="6">Đang tải...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="studentModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Thêm sinh viên</h3>
+      <label>Mã sinh viên</label><input id="studentCode" />
+      <label>Họ tên</label><input id="studentName" />
+      <label>Chuyên ngành</label><input id="studentClass" />
+      <div class="modal-actions"><button onclick="createStudent()">Lưu</button><button class="secondary" onclick="closeStudentModal()">Hủy</button></div>
+      <div id="studentModalMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="studentWorkTimeModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>Giờ làm việc</h3>
+      <input id="studentWorkTimeStudentId" type="hidden" />
+      <div id="studentWorkTimeName" class="muted"></div>
+      <label>Giờ vào</label><input id="studentWorkStartTime" type="time" />
+      <label>Giờ ra</label><input id="studentWorkEndTime" type="time" />
+      <div class="modal-actions">
+        <button onclick="saveStudentWorkTime()">Lưu</button>
+        <button class="secondary" onclick="resetStudentWorkTime()">Dùng giờ hệ thống</button>
+        <button class="secondary" onclick="closeStudentWorkTimeModal()">Hủy</button>
+      </div>
+      <div id="studentWorkTimeMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="evidenceModal" class="modal hidden">
+    <div class="modal-content evidence-modal-content">
+      <div class="card-header">
+        <h3 id="evidenceModalTitle">Ảnh bằng chứng</h3>
+        <button class="secondary" onclick="closeEvidenceModal()">Đóng</button>
+      </div>
+      <img id="evidenceModalImage" class="evidence-modal-img" alt="Ảnh bằng chứng" />
+      <div id="evidenceModalMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="faceGalleryModal" class="modal hidden">
+    <div class="modal-content face-gallery-modal-content">
+      <div class="card-header">
+        <div>
+          <h3>Ảnh khuôn mặt đã đăng ký</h3>
+          <p id="faceGalleryStudentName" class="muted"></p>
+        </div>
+        <button class="secondary" onclick="closeFaceGallery()">Đóng</button>
+      </div>
+      <div id="faceGalleryGrid" class="face-gallery-grid"></div>
+      <div id="faceGalleryMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="attendanceDetailModal" class="modal hidden">
+    <div class="modal-content attendance-detail-modal-content">
+      <div class="card-header">
+        <h3>Chi tiết điểm danh</h3>
+        <button class="secondary" onclick="closeAttendanceDetailModal()">Đóng</button>
+      </div>
+      <div id="attendanceDetailBody"></div>
+      <div id="attendanceDetailMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="leaveReviewModal" class="modal hidden">
+    <div class="modal-content leave-review-modal-content">
+      <h3 id="leaveReviewTitle">Xử lý đơn nghỉ</h3>
+      <p id="leaveReviewHint" class="muted"></p>
+      <div class="leave-review-field"><label for="leaveReviewNote">Ghi chú</label><textarea id="leaveReviewNote" rows="5" maxlength="500" placeholder="Nhập lý do hoặc ghi chú xử lý..."></textarea></div>
+      <div class="modal-actions"><button id="leaveReviewSubmitBtn" onclick="submitLeaveReview()">Xác nhận</button><button class="secondary" onclick="closeLeaveReviewModal()">Hủy</button></div>
+      <div id="leaveReviewMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="staffReportDetailModal" class="modal hidden">
+    <div class="modal-content staff-report-detail-modal">
+      <div class="card-header"><div><h3 id="staffReportDetailTitle">Chi tiết báo cáo</h3><p id="staffReportDetailMeta" class="muted"></p></div><button class="secondary" type="button" onclick="closeStaffReportDetail()">Đóng</button></div>
+      <div id="staffReportDetailBody"></div>
+      <div id="staffReportReviewPanel" class="hidden leave-review-field">
+        <label for="staffReportReviewNote">Nhận xét</label><textarea id="staffReportReviewNote" rows="4" maxlength="2000" placeholder="Bắt buộc khi yêu cầu sinh viên chỉnh sửa."></textarea>
+        <div class="modal-actions"><button type="button" onclick="submitStaffReportReview('approved')">Duyệt báo cáo</button><button class="secondary" type="button" onclick="submitStaffReportReview('revision_requested')">Yêu cầu chỉnh sửa</button></div>
+      </div>
+      <div id="staffReportDetailMessage" class="message"></div>
+    </div>
+  </div>
+
+  <div id="faceRequestDetailModal" class="modal hidden">
+    <div class="modal-content face-request-detail-modal-content">
+      <div class="card-header"><div><h3>Yêu cầu đăng ký FaceID</h3><p id="faceRequestDetailStudent" class="muted"></p></div><button class="secondary" onclick="closeFaceRequestDetailModal()">Đóng</button></div>
+      <div id="faceRequestDetailBody"></div>
+      <div id="faceRequestRejectPanel" class="hidden leave-review-field"><label for="faceRequestRejectReason">Lý do từ chối</label><textarea id="faceRequestRejectReason" rows="4" maxlength="500" placeholder="Ví dụ: Ảnh bị mờ, vui lòng chụp lại ở nơi đủ sáng."></textarea></div>
+      <div id="faceRequestDetailActions" class="modal-actions"></div>
+      <div id="faceRequestDetailMessage" class="message"></div>
+    </div>
+  </div>
+
+  <script src="/static/js/app-core.js?v=today-filter-1"></script>
+  <script src="/static/js/app-dashboard-accounts.js?v=font-ui-11"></script>
+  <script src="/static/js/app-students-face.js?v=student-face-register-fix-2"></script>
+  <script src="/static/js/app-attendance-alerts.js?v=audit-content-detail-2"></script>
+  <script src="/static/js/app-settings-realtime.js?v=settings-layout-3"></script>
+  <script src="/static/js/app-work-schedule.js?v=work-schedule-1"></script>
+  <script src="/static/js/app-leave-requests.js?v=leave-requests-1"></script>
+  <script src="/static/js/app-student-reports.js?v=student-reports-2"></script>
+  <script src="/static/js/app-face-registration-requests.js?v=face-request-reject-confirm-1"></script>
+</body>
+</html>

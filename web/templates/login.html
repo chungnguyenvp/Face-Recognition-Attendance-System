@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đăng nhập - Face Lab System</title>
+  <link rel="stylesheet" href="/static/css/dashboard-layout.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/dashboard-components.css?v=font-ui-11" />
+  <link rel="stylesheet" href="/static/css/dashboard-features.css?v=font-ui-11" />
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <div class="logo-box">FL</div>
+    <h1>Face Lab System</h1>
+    <p>Đăng nhập quản trị hệ thống nhận diện ra/vào lab</p>
+    <form id="loginForm">
+      <label>Tài khoản</label>
+      <input id="username" type="text" required />
+      <label>Mật khẩu</label>
+      <input id="password" type="password" required />
+      <button type="submit">Đăng nhập</button>
+      <div id="loginError" class="error-text"></div>
+    </form>
+  </div>
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const error = document.getElementById('loginError');
+      error.textContent = '';
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          username: document.getElementById('username').value,
+          password: document.getElementById('password').value
+        })
+      });
+      if (res.ok) window.location.replace(`/?fresh=${Date.now()}`);
+      else {
+        const data = await res.json().catch(() => ({}));
+        error.textContent = data.detail || 'Đăng nhập thất bại';
+      }
+    });
+  </script>
+</body>
+</html>
