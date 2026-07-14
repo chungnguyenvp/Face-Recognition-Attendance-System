@@ -130,6 +130,20 @@ class OperationalSmokeTests(unittest.TestCase):
         settings = client.get("/api/settings").json()
         self.assertEqual(settings["face_threshold"], "0.6")
         self.assertEqual(settings["missing_checkout_cutoff_time"], "22:00")
+        self.assertNotIn("check_in_camera_source", settings)
+        self.assertNotIn("check_out_camera_source", settings)
+
+        legacy_camera_settings = client.put(
+            "/api/settings",
+            json={
+                "face_threshold": 0.6,
+                "check_cooldown_seconds": 15,
+                "frame_skip": 3,
+                "check_in_camera_source": "0",
+            },
+            headers=self.csrf_headers(client),
+        )
+        self.assertEqual(legacy_camera_settings.status_code, 422)
 
         dashboard = client.get("/api/dashboard")
         self.assertEqual(dashboard.status_code, 200, dashboard.text)

@@ -1,9 +1,11 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.time_utils import validate_time_text
 
 
 class SettingsUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     face_threshold: float = Field(ge=0, le=1)
     check_cooldown_seconds: int = Field(ge=1)
     frame_skip: int = Field(ge=1)

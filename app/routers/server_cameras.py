@@ -9,7 +9,7 @@ from app.routers.deps import (
     require_admin_or_lab_manager,
     user_from_session_token,
 )
-from app.schemas.server_cameras import CameraStartPayload
+from app.schemas.server_cameras import CameraStartRequest
 from app.services.server_camera_service import MJPEG_BOUNDARY, server_camera_manager
 
 
@@ -64,8 +64,12 @@ def camera_stream(
 
 
 @router.post("/{action}/start")
-def start_camera(action: str, payload: CameraStartPayload | None = None, _actor=Depends(require_admin)):
-    return server_camera_manager.start(_validate_action(action), payload.source if payload else None)
+def start_camera(
+    action: str,
+    _payload: CameraStartRequest | None = None,
+    _actor=Depends(require_admin),
+):
+    return server_camera_manager.start(_validate_action(action))
 
 
 @router.post("/{action}/stop")

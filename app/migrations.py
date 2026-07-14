@@ -5,12 +5,22 @@ from datetime import datetime
 
 USERS_STUDENT_FK_VERSION = 2026071401
 FACE_REQUEST_CONSTRAINTS_VERSION = 2026071402
+REMOVE_LEGACY_CAMERA_SETTINGS_VERSION = 2026071501
+LEGACY_CAMERA_SETTING_KEYS = (
+    "camera_mode",
+    "check_in_camera_device_id",
+    "check_out_camera_device_id",
+    "auto_start_cameras",
+    "check_in_camera_source",
+    "check_out_camera_source",
+)
 
 
 def run_schema_migrations(db: sqlite3.Connection) -> None:
     _ensure_schema_migrations_table(db)
     _migrate_users_student_foreign_key(db)
     _migrate_face_registration_request_constraints(db)
+    _remove_legacy_camera_settings(db)
 
 
 def _ensure_schema_migrations_table(db: sqlite3.Connection) -> None:
@@ -40,6 +50,22 @@ def _record_migration(db: sqlite3.Connection, version: int, name: str) -> None:
         VALUES (?, ?, ?)
         """,
         (version, name, datetime.now().isoformat(timespec="seconds")),
+    )
+
+
+def _remove_legacy_camera_settings(db: sqlite3.Connection) -> None:
+    if _migration_applied(db, REMOVE_LEGACY_CAMERA_SETTINGS_VERSION):
+        return
+
+    placeholders = ", ".join("?" for _ in LEGACY_CAMERA_SETTING_KEYS)
+    db.execute(
+        f"DELETE FROM settings WHERE key IN ({placeholders})",
+        LEGACY_CAMERA_SETTING_KEYS,
+    )
+    _record_migration(
+        db,
+        REMOVE_LEGACY_CAMERA_SETTINGS_VERSION,
+        "remove legacy browser and database camera settings",
     )
 
 

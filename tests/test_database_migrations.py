@@ -6,6 +6,8 @@ from pathlib import Path
 from app import db as db_module
 from app.migrations import (
     FACE_REQUEST_CONSTRAINTS_VERSION,
+    LEGACY_CAMERA_SETTING_KEYS,
+    REMOVE_LEGACY_CAMERA_SETTINGS_VERSION,
     USERS_STUDENT_FK_VERSION,
 )
 
@@ -76,7 +78,16 @@ class DatabaseMigrationTests(unittest.TestCase):
                 FOREIGN KEY(student_id) REFERENCES students(id) ON DELETE CASCADE,
                 FOREIGN KEY(reviewed_by) REFERENCES users(id) ON DELETE SET NULL
             );
+
+            CREATE TABLE settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
             """
+        )
+        db.executemany(
+            "INSERT INTO settings(key, value) VALUES (?, 'legacy-value')",
+            [(key,) for key in LEGACY_CAMERA_SETTING_KEYS],
         )
         db.execute(
             """
@@ -144,6 +155,10 @@ class DatabaseMigrationTests(unittest.TestCase):
                     "SELECT version FROM schema_migrations"
                 ).fetchall()
             }
+            legacy_camera_setting_count = db.execute(
+                f"SELECT COUNT(*) FROM settings WHERE key IN ({', '.join('?' for _ in LEGACY_CAMERA_SETTING_KEYS)})",
+                LEGACY_CAMERA_SETTING_KEYS,
+            ).fetchone()[0]
 
         self.assertTrue(
             any(
@@ -163,8 +178,13 @@ class DatabaseMigrationTests(unittest.TestCase):
         self.assertEqual(face_request["planned_remove_count"], 0)
         self.assertEqual(
             migration_versions,
-            {USERS_STUDENT_FK_VERSION, FACE_REQUEST_CONSTRAINTS_VERSION},
+            {
+                USERS_STUDENT_FK_VERSION,
+                FACE_REQUEST_CONSTRAINTS_VERSION,
+                REMOVE_LEGACY_CAMERA_SETTINGS_VERSION,
+            },
         )
+        self.assertEqual(legacy_camera_setting_count, 0)
 
     def test_upgraded_database_enforces_new_constraints(self):
         db_module.init_db()
@@ -198,7 +218,7 @@ class DatabaseMigrationTests(unittest.TestCase):
 
         self.assertEqual(user_count, 3)
         self.assertEqual(request_count, 1)
-        self.assertEqual(migration_count, 2)
+        self.assertEqual(migration_count, 3)
 
 
 if __name__ == "__main__":

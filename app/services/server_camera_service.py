@@ -111,7 +111,7 @@ class ServerCameraManager:
         for action in ("check_in", "check_out"):
             source = self.configured_source(action)
             if source:
-                statuses[action] = self.start(action, source)
+                statuses[action] = self.start(action)
             else:
                 statuses[action] = self.status(action)
         return statuses
@@ -119,9 +119,9 @@ class ServerCameraManager:
     def stop_all(self) -> dict:
         return {action: self.stop(action) for action in ("check_in", "check_out")}
 
-    def start(self, action: str, source: str | None = None) -> dict:
+    def start(self, action: str) -> dict:
         self._validate_action(action)
-        source = source if source is not None else self.configured_source(action)
+        source = self.configured_source(action)
         parsed_source = parse_camera_source(source)
         if parsed_source is None:
             with self._lock:

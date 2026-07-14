@@ -70,12 +70,16 @@ class ServerCameraManagerTests(unittest.TestCase):
         first = ServerCameraManager()
         second = ServerCameraManager()
 
-        with patch(
+        with patch.object(
+            server_camera_service.settings,
+            "check_in_camera_source",
+            "0",
+        ), patch(
             "app.services.server_camera_service.threading.Thread",
             FakeStartThread,
         ):
-            first.start("check_in", "0")
-            second.start("check_in", "0")
+            first.start("check_in")
+            second.start("check_in")
 
         first_scope = first._cameras["check_in"].session_scope
         second_scope = second._cameras["check_in"].session_scope

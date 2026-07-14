@@ -1,5 +1,5 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
-class CameraStartPayload(BaseModel):
-    source: str | None = None
+class CameraStartRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
