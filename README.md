@@ -56,7 +56,6 @@ Backend sử dụng FastAPI và SQLite; giao diện được viết bằng HTML/
 - InsightFace và liveness dùng CPU, hiệu năng phụ thuộc máy và độ phân giải camera.
 - Chưa có Dockerfile, pipeline CI/CD hoặc bộ cài Windows trong repository.
 - API docs bị tắt mặc định.
-- Repository chưa có file `LICENSE`; README cũ ghi MIT nhưng chưa có căn cứ trong repository để xác nhận.
 
 ## Tính năng
 
