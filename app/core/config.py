@@ -2,7 +2,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     app_name: str = "Face Lab System"
     secret_key: str = "change-this-secret"
@@ -12,8 +16,6 @@ class Settings(BaseSettings):
     face_threshold: float = 0.55
     check_cooldown_seconds: int = 30
     frame_skip: int = 1
-    check_in_camera_device_id: str = ""
-    check_out_camera_device_id: str = ""
     auto_start_cameras: bool = False
     check_in_camera_source: str = ""
     check_out_camera_source: str = ""
@@ -21,7 +23,6 @@ class Settings(BaseSettings):
     server_camera_preview_fps: float = 8.0
     server_camera_jpeg_quality: int = 80
     camera_reconnect_seconds: float = 5.0
-    realtime_camera_mode: str = "browser"
     default_admin_username: str = "admin"
     default_admin_password: str = "admin123"
     login_max_failed_attempts: int = 10
@@ -33,10 +34,6 @@ class Settings(BaseSettings):
     public_docs_enabled: bool = False
     health_details_enabled: bool = False
     password_pbkdf2_iterations: int = 600_000
-    websocket_allowed_origins: str = "http://127.0.0.1:8002,http://localhost:8002"
-    websocket_max_message_bytes: int = 512 * 1024
-    websocket_max_image_bytes: int = 384 * 1024
-    websocket_max_image_pixels: int = 1_000_000
 
     # Anti-spoofing / liveness detection
     # Default: best_model_quantized.onnx from the lightweight face-antispoof ONNX repo.

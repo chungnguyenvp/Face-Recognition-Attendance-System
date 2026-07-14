@@ -379,7 +379,6 @@ async function startFaceRegisterCamera() {
     return;
   }
   try {
-    stopAllRealtimeCameras(false);
     faceRegisterStream = await navigator.mediaDevices.getUserMedia({ video: { width: 960, height: 540 }, audio: false });
     video.srcObject = faceRegisterStream;
     await new Promise((resolve) => {

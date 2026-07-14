@@ -23,7 +23,6 @@ from app.routers import (
     health,
     leave_requests,
     pages,
-    realtime,
     server_cameras,
     settings as settings_router,
     student_portal,
@@ -75,7 +74,6 @@ app.include_router(leave_requests.student_router)
 app.include_router(leave_requests.staff_router)
 app.include_router(pages.router)
 app.include_router(settings_router.router)
-app.include_router(realtime.router)
 app.include_router(server_cameras.router)
 app.include_router(users.router)
 app.include_router(student_portal.router)

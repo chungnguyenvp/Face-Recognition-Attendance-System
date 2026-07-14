@@ -7,37 +7,25 @@ function renderLivenessModelStatus(status) {
 
 async function loadSettings(fillForm = true) {
   settings = await api('/api/settings');
-  if (fillForm) {
-    document.getElementById('settingThreshold').value = settings.face_threshold || 0.55;
-    document.getElementById('settingCooldown').value = settings.check_cooldown_seconds || 30;
-    document.getElementById('settingFrameSkip').value = settings.frame_skip || 2;
-    document.getElementById('settingLivenessEnabled').checked = String(settings.liveness_enabled || 'false') === 'true';
-    document.getElementById('settingAutoStartCameras').checked = String(settings.auto_start_cameras || 'false') === 'true';
-    document.getElementById('settingCheckInCameraSource').value = settings.check_in_camera_source || '';
-    document.getElementById('settingCheckOutCameraSource').value = settings.check_out_camera_source || '';
-    try {
-      renderLivenessModelStatus(await api('/api/settings/liveness-status'));
-    } catch (_error) {
-      renderLivenessModelStatus();
-    }
-    await loadCameraDevices();
+  if (!fillForm) return;
+  document.getElementById('settingThreshold').value = settings.face_threshold || 0.55;
+  document.getElementById('settingCooldown').value = settings.check_cooldown_seconds || 30;
+  document.getElementById('settingFrameSkip').value = settings.frame_skip || 2;
+  document.getElementById('settingLivenessEnabled').checked = String(settings.liveness_enabled || 'false') === 'true';
+  try {
+    renderLivenessModelStatus(await api('/api/settings/liveness-status'));
+  } catch (_error) {
+    renderLivenessModelStatus();
   }
 }
 
 async function saveSettings() {
-  const checkInCamera = document.getElementById('settingCheckInCamera');
-  const checkOutCamera = document.getElementById('settingCheckOutCamera');
   const msg = document.getElementById('settingsMessage');
   msg.textContent = '';
   const payload = {
     face_threshold: Number(document.getElementById('settingThreshold').value),
     check_cooldown_seconds: Number(document.getElementById('settingCooldown').value),
     frame_skip: Number(document.getElementById('settingFrameSkip').value),
-    check_in_camera_device_id: checkInCamera ? checkInCamera.value : '',
-    check_out_camera_device_id: checkOutCamera ? checkOutCamera.value : '',
-    auto_start_cameras: document.getElementById('settingAutoStartCameras').checked,
-    check_in_camera_source: document.getElementById('settingCheckInCameraSource').value.trim(),
-    check_out_camera_source: document.getElementById('settingCheckOutCameraSource').value.trim(),
     liveness_enabled: document.getElementById('settingLivenessEnabled').checked,
   };
 
@@ -54,13 +42,11 @@ async function saveSettings() {
       return;
     }
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      throw new Error(apiErrorMessage(data.detail));
-    }
+    if (!res.ok) throw new Error(apiErrorMessage(data.detail));
     msg.textContent = 'Đã lưu cài đặt.';
     await loadSettings();
-  } catch (e) {
-    msg.textContent = `Không lưu được: ${e.message}`;
+  } catch (error) {
+    msg.textContent = `Không lưu được: ${error.message}`;
   }
 }
 
@@ -69,9 +55,7 @@ function realtimeCameraConfig(action) {
     ? {
         action,
         label: 'Check-out',
-        settingKey: 'check_out_camera_device_id',
         buttonId: 'checkOutToggleBtn',
-        videoId: 'checkOutVideo',
         streamImageId: 'checkOutServerStream',
         overlayId: 'checkOutOverlay',
         resultId: 'checkOutResult',
@@ -82,9 +66,7 @@ function realtimeCameraConfig(action) {
     : {
         action: 'check_in',
         label: 'Check-in',
-        settingKey: 'check_in_camera_device_id',
         buttonId: 'checkInToggleBtn',
-        videoId: 'checkInVideo',
         streamImageId: 'checkInServerStream',
         overlayId: 'checkInOverlay',
         resultId: 'checkInResult',
@@ -94,54 +76,18 @@ function realtimeCameraConfig(action) {
       };
 }
 
-function isServerRealtimeMode() {
-  return String(settings.realtime_camera_mode || 'browser').toLowerCase() === 'server';
-}
-
-function populateCameraSelect(selectId, selectedValue) {
-  const select = document.getElementById(selectId);
-  if (!select) return;
-  const options = ['<option value="">Camera mặc định</option>'].concat(
-    cameraDevices.map((device, idx) => `<option value="${device.deviceId}">${device.label || `Camera ${idx + 1}`}</option>`)
-  );
-  select.innerHTML = options.join('');
-  select.value = selectedValue || '';
-}
-
-async function loadCameraDevices() {
-  if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-  const devices = await navigator.mediaDevices.enumerateDevices();
-  cameraDevices = devices.filter((device) => device.kind === 'videoinput');
-  populateCameraSelect('settingCheckInCamera', settings.check_in_camera_device_id || '');
-  populateCameraSelect('settingCheckOutCamera', settings.check_out_camera_device_id || '');
-}
-
-function selectedCameraLabel(deviceId) {
-  const device = cameraDevices.find((item) => item.deviceId === deviceId);
-  return device ? device.label || 'Camera đã chọn' : 'Camera mặc định';
-}
-
-function realtimeCameraConstraints(action) {
-  const config = realtimeCameraConfig(action);
-  const deviceId = settings[config.settingKey] || '';
-  const video = { width: 640, height: 360 };
-  if (deviceId) video.deviceId = { exact: deviceId };
-  return { video, audio: false };
-}
-
 function updateRealtimeToggle(action) {
   const config = realtimeCameraConfig(action);
-  const session = realtimeSessions[config.action];
-  const btn = document.getElementById(config.buttonId);
-  if (!btn) return;
-  const running = isServerRealtimeMode() ? session.serverRunning : Boolean(session.stream);
-  btn.textContent = running ? config.offText : config.onText;
-  btn.classList.toggle('secondary', running);
+  const running = realtimeSessions[config.action].serverRunning;
+  const button = document.getElementById(config.buttonId);
+  if (!button) return;
+  button.textContent = running ? config.offText : config.onText;
+  button.classList.toggle('secondary', running);
 }
 
 function updateRealtimeCameraLabel(action, text) {
-  const el = document.getElementById(realtimeCameraConfig(action).cameraLabelId);
-  if (el) el.textContent = text;
+  const element = document.getElementById(realtimeCameraConfig(action).cameraLabelId);
+  if (element) element.textContent = text;
 }
 
 async function serverCameraPost(path) {
@@ -163,19 +109,13 @@ async function serverCameraPost(path) {
 function clearRealtimeOverlay(action) {
   const canvas = document.getElementById(realtimeCameraConfig(action).overlayId);
   if (!canvas) return;
-  const context = canvas.getContext('2d');
-  context.clearRect(0, 0, canvas.width, canvas.height);
+  canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function attachServerCameraStream(action) {
   const config = realtimeCameraConfig(action);
   const session = realtimeSessions[action];
   const image = document.getElementById(config.streamImageId);
-  const video = document.getElementById(config.videoId);
-  if (video) {
-    video.srcObject = null;
-    video.hidden = true;
-  }
   if (!image || session.serverStreamAttached) return;
   image.hidden = false;
   image.src = `/api/server-cameras/${action}/stream?view=${Date.now()}`;
@@ -217,13 +157,9 @@ function applyServerCameraStatus(action, status) {
         canvas.height = status.frame_height;
       }
     }
-    if (
-      status.last_result &&
-      status.last_result_sequence !== session.lastResultSequence
-    ) {
+    if (status.last_result && status.last_result_sequence !== session.lastResultSequence) {
       session.lastResultSequence = status.last_result_sequence;
       handleRealtimeRecognition(action, status.last_result, {
-        mirrored: false,
         frameWidth: status.frame_width,
         frameHeight: status.frame_height,
         refreshDashboard: false,
@@ -245,7 +181,7 @@ function applyServerCameraStatus(action, status) {
 }
 
 async function refreshServerCameraStatus() {
-  if (!isServerRealtimeMode() || serverCameraStatusBusy) return;
+  if (serverCameraStatusBusy) return;
   serverCameraStatusBusy = true;
   try {
     const statuses = await api('/api/server-cameras/status');
@@ -253,8 +189,7 @@ async function refreshServerCameraStatus() {
     applyServerCameraStatus('check_out', statuses.check_out || {});
   } catch (error) {
     ['check_in', 'check_out'].forEach((action) => {
-      const config = realtimeCameraConfig(action);
-      const result = document.getElementById(config.resultId);
+      const result = document.getElementById(realtimeCameraConfig(action).resultId);
       if (result) result.textContent = `Không tải được trạng thái camera: ${error.message}`;
     });
   } finally {
@@ -264,10 +199,7 @@ async function refreshServerCameraStatus() {
 
 function startServerCameraStatusPolling() {
   if (serverCameraStatusTimer) clearInterval(serverCameraStatusTimer);
-  serverCameraStatusTimer = setInterval(
-    refreshServerCameraStatus,
-    SERVER_CAMERA_STATUS_INTERVAL_MS,
-  );
+  serverCameraStatusTimer = setInterval(refreshServerCameraStatus, SERVER_CAMERA_STATUS_INTERVAL_MS);
 }
 
 async function startServerRealtimeCamera(action) {
@@ -309,12 +241,8 @@ async function stopAllServerRealtimeCameras() {
 }
 
 async function initializeRealtimeCameraUi() {
-  if (!isServerRealtimeMode()) return;
   ['check_in', 'check_out'].forEach((action) => {
-    const config = realtimeCameraConfig(action);
-    const video = document.getElementById(config.videoId);
-    if (video) video.hidden = true;
-    const button = document.getElementById(config.buttonId);
+    const button = document.getElementById(realtimeCameraConfig(action).buttonId);
     if (button && !isAdmin()) {
       button.disabled = true;
       button.title = 'Chỉ admin được bật hoặc tắt camera backend.';
@@ -330,183 +258,63 @@ async function initializeRealtimeCameraUi() {
 }
 
 async function toggleRealtimeCamera(action) {
-  if (isServerRealtimeMode()) {
-    if (realtimeSessions[action].serverRunning) {
-      await stopServerRealtimeCamera(action);
-    } else {
-      await startServerRealtimeCamera(action);
-    }
-    return;
-  }
-  const session = realtimeSessions[action];
-  if (session && session.stream) {
-    stopRealtimeCamera(action, true);
-    return;
-  }
-  await startRealtimeCamera(action);
-}
-
-async function startRealtimeCamera(action) {
-  if (isServerRealtimeMode()) {
+  if (realtimeSessions[action].serverRunning) {
+    await stopServerRealtimeCamera(action);
+  } else {
     await startServerRealtimeCamera(action);
-    return;
-  }
-  const config = realtimeCameraConfig(action);
-  const session = realtimeSessions[config.action];
-  const video = document.getElementById(config.videoId);
-  const canvas = document.getElementById(config.overlayId);
-  const result = document.getElementById(config.resultId);
-  stopFaceRegisterCamera(false);
-  await loadSettings(false);
-  await loadCameraDevices();
-  session.stopping = false;
-
-  try {
-    video.hidden = false;
-    session.stream = await navigator.mediaDevices.getUserMedia(realtimeCameraConstraints(config.action));
-    video.srcObject = session.stream;
-    await new Promise((resolve) => {
-      video.onloadedmetadata = resolve;
-    });
-    const frameSize = realtimeFrameSize(video);
-    canvas.width = frameSize.width;
-    canvas.height = frameSize.height;
-    const wsProtocol = location.protocol === 'https:' ? 'wss' : 'ws';
-    session.ws = new WebSocket(`${wsProtocol}://${location.host}/ws/recognize?action=${config.action}`);
-    session.ws.onmessage = (event) => handleRealtimeRecognition(config.action, JSON.parse(event.data));
-    session.ws.onopen = () => {
-      session.sendTimer = setInterval(() => sendRealtimeFrame(config.action), REALTIME_SEND_INTERVAL_MS);
-      result.textContent = `${config.label} đang chạy, đang chờ nhận diện...`;
-      updateRealtimeCameraLabel(config.action, selectedCameraLabel(settings[config.settingKey] || ''));
-      updateRealtimeToggle(config.action);
-    };
-    session.ws.onclose = () => {
-      session.busy = false;
-      if (session.stopping) return;
-      stopRealtimeCamera(config.action, false);
-      result.textContent = `${config.label} đã dừng. Bật lại camera để tiếp tục nhận diện.`;
-    };
-  } catch (e) {
-    stopRealtimeCamera(config.action, false);
-    result.textContent = e.message || `Không bật được camera ${config.label}.`;
   }
 }
 
-function stopRealtimeCamera(action, showMessage = true) {
-  if (isServerRealtimeMode()) return;
-  const config = realtimeCameraConfig(action);
-  const session = realtimeSessions[config.action];
-  session.stopping = true;
-  if (session.sendTimer) clearInterval(session.sendTimer);
-  if (session.ws) {
-    session.ws.onclose = null;
-    session.ws.close();
-  }
-  if (session.stream) session.stream.getTracks().forEach((track) => track.stop());
-  session.sendTimer = null;
-  session.ws = null;
-  session.stream = null;
-  session.busy = false;
-
-  const video = document.getElementById(config.videoId);
-  const canvas = document.getElementById(config.overlayId);
-  if (video) video.srcObject = null;
-  if (canvas) {
-    const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }
-  if (showMessage) {
-    const result = document.getElementById(config.resultId);
-    if (result) result.textContent = `${config.label} đã tắt.`;
-  }
-  updateRealtimeCameraLabel(config.action, 'Chưa bật');
-  updateRealtimeToggle(config.action);
-  session.stopping = false;
-}
-
-function stopAllRealtimeCameras(showMessage = true) {
-  if (isServerRealtimeMode()) {
-    if (showMessage) void stopAllServerRealtimeCameras();
-    return;
-  }
-  stopRealtimeCamera('check_in', showMessage);
-  stopRealtimeCamera('check_out', showMessage);
-}
-
-function sendRealtimeFrame(action) {
-  const config = realtimeCameraConfig(action);
-  const session = realtimeSessions[config.action];
-  const video = document.getElementById(config.videoId);
-  if (!session.ws || session.ws.readyState !== WebSocket.OPEN || video.readyState < 2) return;
-  if (session.busy) return;
-  const temp = document.createElement('canvas');
-  const frameSize = realtimeFrameSize(video);
-  temp.width = frameSize.width;
-  temp.height = frameSize.height;
-  const overlay = document.getElementById(config.overlayId);
-  if (overlay.width !== temp.width || overlay.height !== temp.height) {
-    overlay.width = temp.width;
-    overlay.height = temp.height;
-  }
-  temp.getContext('2d').drawImage(video, 0, 0, temp.width, temp.height);
-  session.busy = true;
-  session.ws.send(JSON.stringify({ image: temp.toDataURL('image/jpeg', REALTIME_JPEG_QUALITY) }));
+function stopAllRealtimeCameras() {
+  void stopAllServerRealtimeCameras();
 }
 
 function handleRealtimeRecognition(action, data, options = {}) {
   const config = realtimeCameraConfig(action);
-  const session = realtimeSessions[config.action];
-  session.busy = false;
   const result = document.getElementById(config.resultId);
   if (data.type === 'skip') return;
   if (data.type === 'error') {
-    const canvas = document.getElementById(config.overlayId);
-    if (canvas) {
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-    }
+    clearRealtimeOverlay(action);
     result.textContent = data.message;
     return;
   }
+
   const canvas = document.getElementById(config.overlayId);
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const context = canvas.getContext('2d');
+  context.clearRect(0, 0, canvas.width, canvas.height);
   const sourceWidth = Number(options.frameWidth) || canvas.width;
   const sourceHeight = Number(options.frameHeight) || canvas.height;
   const scaleX = sourceWidth > 0 ? canvas.width / sourceWidth : 1;
   const scaleY = sourceHeight > 0 ? canvas.height / sourceHeight : 1;
-  const mirrored = options.mirrored !== false;
   const items = data.items || [];
+
   items.forEach((item) => {
     if (!Array.isArray(item.bbox) || item.bbox.length < 4) return;
     const [x1, y1, x2, y2] = item.bbox;
-    const scaledX1 = x1 * scaleX;
-    const scaledX2 = x2 * scaleX;
-    const drawX = Math.max(
-      0,
-      Math.min(canvas.width, mirrored ? canvas.width - scaledX2 : scaledX1),
-    );
+    const drawX = Math.max(0, Math.min(canvas.width, x1 * scaleX));
     const drawY = Math.max(0, Math.min(canvas.height, y1 * scaleY));
     const drawW = Math.max(0, Math.min(canvas.width - drawX, (x2 - x1) * scaleX));
     const drawH = Math.max(0, Math.min(canvas.height - drawY, (y2 - y1) * scaleY));
     if (drawW <= 0 || drawH <= 0) return;
-    ctx.lineWidth = 3;
+
+    context.lineWidth = 3;
     const status = itemDisplayStatus(item);
     const color = statusColor(status, item.recognized);
-    ctx.strokeStyle = color;
-    ctx.strokeRect(drawX, drawY, drawW, drawH);
+    context.strokeStyle = color;
+    context.strokeRect(drawX, drawY, drawW, drawH);
     const label = itemOverlayText(item);
-    ctx.font = `600 18px ${getComputedStyle(document.body).fontFamily}`;
+    context.font = `600 18px ${getComputedStyle(document.body).fontFamily}`;
     const labelPaddingX = 8;
     const labelHeight = 26;
-    const labelWidth = Math.min(canvas.width - 4, ctx.measureText(label).width + labelPaddingX * 2);
+    const labelWidth = Math.min(canvas.width - 4, context.measureText(label).width + labelPaddingX * 2);
     const labelX = Math.max(2, Math.min(drawX, canvas.width - labelWidth - 2));
     const labelY = drawY > labelHeight + 8 ? drawY - labelHeight - 4 : drawY + 4;
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
-    ctx.fillRect(labelX, labelY, labelWidth, labelHeight);
-    ctx.fillStyle = color;
-    ctx.fillText(label, labelX + labelPaddingX, labelY + 18);
+    context.fillStyle = 'rgba(15, 23, 42, 0.88)';
+    context.fillRect(labelX, labelY, labelWidth, labelHeight);
+    context.fillStyle = color;
+    context.fillText(label, labelX + labelPaddingX, labelY + 18);
   });
+
   const primaryItem = items.find((item) => itemDisplayStatus(item) !== 'secondary');
   if (primaryItem) {
     result.innerHTML = realtimeResultHtml(primaryItem, config.label);
@@ -535,6 +343,6 @@ async function initApp() {
   }
 }
 
-initApp().catch((err) => {
-  console.error(err);
+initApp().catch((error) => {
+  console.error(error);
 });

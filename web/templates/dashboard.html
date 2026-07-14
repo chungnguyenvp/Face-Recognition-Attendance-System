@@ -151,12 +151,12 @@
           <div class="dual-camera-grid">
             <div class="camera-panel">
               <div class="camera-panel-header"><h4>Check-in</h4><span id="checkInCameraLabel">Chưa bật</span></div>
-              <div class="video-wrap"><video id="checkInVideo" autoplay playsinline muted></video><img id="checkInServerStream" class="server-camera-stream" alt="Camera check-in" hidden><canvas id="checkInOverlay"></canvas></div>
+              <div class="video-wrap"><img id="checkInServerStream" class="server-camera-stream" alt="Camera check-in" hidden><canvas id="checkInOverlay"></canvas></div>
               <div id="checkInResult" class="camera-result">Chưa bật camera</div>
             </div>
             <div class="camera-panel">
               <div class="camera-panel-header"><h4>Check-out</h4><span id="checkOutCameraLabel">Chưa bật</span></div>
-              <div class="video-wrap"><video id="checkOutVideo" autoplay playsinline muted></video><img id="checkOutServerStream" class="server-camera-stream" alt="Camera check-out" hidden><canvas id="checkOutOverlay"></canvas></div>
+              <div class="video-wrap"><img id="checkOutServerStream" class="server-camera-stream" alt="Camera check-out" hidden><canvas id="checkOutOverlay"></canvas></div>
               <div id="checkOutResult" class="camera-result">Chưa bật camera</div>
             </div>
           </div>
@@ -424,15 +424,6 @@
           <label>Ngưỡng nhận diện</label><input id="settingThreshold" type="number" step="0.01" />
           <label>Cooldown ghi log, giây</label><input id="settingCooldown" type="number" />
           <label>Frame skip</label><input id="settingFrameSkip" type="number" />
-           <label>Camera cho Check-in</label><select id="settingCheckInCamera"></select>
-           <label>Camera cho Check-out</label><select id="settingCheckOutCamera"></select>
-           <button type="button" class="secondary" onclick="loadCameraDevices()">Tải lại danh sách camera</button>
-           <div class="settings-server-camera">
-             <h4>Camera server</h4>
-             <label class="settings-toggle"><input id="settingAutoStartCameras" type="checkbox" /><span>Tự động chạy camera server khi khởi động</span></label>
-             <label>Nguồn server camera Check-in</label><input id="settingCheckInCameraSource" placeholder="0 hoặc rtsp://user:pass@ip:554/stream" />
-             <label>Nguồn server camera Check-out</label><input id="settingCheckOutCameraSource" placeholder="1 hoặc rtsp://user:pass@ip:554/stream" />
-           </div>
            <div class="settings-liveness">
              <h4>Chống giả mạo</h4>
              <label class="settings-toggle"><input id="settingLivenessEnabled" type="checkbox" /><span>Bật chống giả mạo khuôn mặt</span></label>
@@ -575,11 +566,11 @@
     </div>
   </div>
 
-  <script src="/static/js/app-core.js?v=server-camera-1"></script>
+  <script src="/static/js/app-core.js?v=server-camera-2"></script>
   <script src="/static/js/app-dashboard-accounts.js?v=font-ui-11"></script>
   <script src="/static/js/app-students-face.js?v=student-face-register-fix-2"></script>
   <script src="/static/js/app-attendance-alerts.js?v=audit-content-detail-2"></script>
-  <script src="/static/js/app-settings-realtime.js?v=server-camera-1"></script>
+  <script src="/static/js/app-settings-realtime.js?v=server-camera-2"></script>
   <script src="/static/js/app-work-schedule.js?v=work-schedule-1"></script>
   <script src="/static/js/app-leave-requests.js?v=leave-requests-1"></script>
   <script src="/static/js/app-student-reports.js?v=student-reports-2"></script>

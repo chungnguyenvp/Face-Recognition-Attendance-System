@@ -1,5 +1,4 @@
 from fastapi import APIRouter, Depends, Request
-from app.core.config import settings
 from app.db import get_db
 from app.repositories import settings_repository
 from app.routers.deps import require_admin, require_admin_or_lab_manager
@@ -14,9 +13,6 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 def get_settings():
     with get_db() as db:
         values = settings_repository.get_settings_map(db)
-    values["realtime_camera_mode"] = (
-        "server" if settings.realtime_camera_mode.lower() == "server" else "browser"
-    )
     return values
 
 
@@ -40,12 +36,6 @@ def update_settings(payload: SettingsUpdate, request: Request, actor=Depends(req
         "frame_skip": str(payload.frame_skip),
     }
     optional_values = {
-        "camera_mode": payload.camera_mode,
-        "check_in_camera_device_id": payload.check_in_camera_device_id,
-        "check_out_camera_device_id": payload.check_out_camera_device_id,
-        "auto_start_cameras": "true" if payload.auto_start_cameras else "false" if payload.auto_start_cameras is not None else None,
-        "check_in_camera_source": payload.check_in_camera_source,
-        "check_out_camera_source": payload.check_out_camera_source,
         "liveness_enabled": "true" if payload.liveness_enabled else "false" if payload.liveness_enabled is not None else None,
         "missing_checkout_cutoff_time": payload.missing_checkout_cutoff_time,
         "work_start_time": payload.work_start_time,

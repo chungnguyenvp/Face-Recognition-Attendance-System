@@ -1,7 +1,6 @@
 let students = [];
 let settings = {};
 let currentUser = null;
-let cameraDevices = [];
 let faceRegisterStream = null;
 let faceScanBusy = false;
 let faceScanCaptures = new Map();
@@ -16,14 +15,11 @@ const shownRealtimeNotices = new Set();
 
 const FACE_ANALYZE_INTERVAL_MS = 650;
 const FACE_AUTO_STABLE_FRAMES = 2;
-const REALTIME_FRAME_MAX_WIDTH = 640;
-const REALTIME_SEND_INTERVAL_MS = 160;
-const REALTIME_JPEG_QUALITY = 0.62;
-const SERVER_CAMERA_STATUS_INTERVAL_MS = 400;
+const SERVER_CAMERA_STATUS_INTERVAL_MS = 1000;
 
 const realtimeSessions = {
-  check_in: { stream: null, ws: null, sendTimer: null, busy: false, stopping: false, serverRunning: false, serverStreamAttached: false, lastResultSequence: -1 },
-  check_out: { stream: null, ws: null, sendTimer: null, busy: false, stopping: false, serverRunning: false, serverStreamAttached: false, lastResultSequence: -1 },
+  check_in: { serverRunning: false, serverStreamAttached: false, lastResultSequence: -1 },
+  check_out: { serverRunning: false, serverStreamAttached: false, lastResultSequence: -1 },
 };
 let serverCameraStatusTimer = null;
 let serverCameraStatusBusy = false;
@@ -64,7 +60,7 @@ const pages = {
   dashboard: ['Tổng quan', 'Tổng quan hệ thống nhận diện ra/vào lab'],
   students: ['Sinh viên', 'Quản lý thông tin sinh viên'],
   'face-register': ['Đăng ký khuôn mặt', 'Thêm mẫu hoặc quét lại bộ khuôn mặt'],
-  camera: ['Camera realtime', 'Nhận diện realtime bằng camera trình duyệt'],
+  camera: ['Camera realtime', 'Nhận diện realtime bằng camera do backend quản lý'],
   logs: ['Lịch sử ra/vào', 'Theo dõi check-in/check-out'],
   attendance: ['Điểm danh', 'Tổng hợp đúng giờ, đi muộn, vắng và thời gian trong lab'],
   workSchedule: ['Lịch làm việc', 'Quản lý ngày làm việc, giờ làm việc và ngày nghỉ của lab'],
@@ -270,14 +266,6 @@ function maybeShowRealtimeNotice(action, item) {
   shownRealtimeNotices.add(key);
   window.alert(item.note);
   setTimeout(() => shownRealtimeNotices.delete(key), 10000);
-}
-
-function realtimeFrameSize(video) {
-  const scale = Math.min(1, REALTIME_FRAME_MAX_WIDTH / video.videoWidth);
-  return {
-    width: Math.round(video.videoWidth * scale),
-    height: Math.round(video.videoHeight * scale),
-  };
 }
 
 function isSpoofDenied(log) {

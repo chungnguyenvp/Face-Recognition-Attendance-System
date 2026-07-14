@@ -604,8 +604,6 @@ img.server-camera-stream {
 }
 
 #video,
-#checkInVideo,
-#checkOutVideo,
 #faceRegisterVideo {
   transform: scaleX(-1);
 }

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 
-from app.services import realtime_session_service
+from app.services import realtime_session_service, server_camera_service
 from app.services.server_camera_service import MJPEG_BOUNDARY, ServerCameraManager
 
 
@@ -153,6 +153,28 @@ class ServerCameraManagerTests(unittest.TestCase):
         self.assertEqual(source, "rtsp://***@192.168.1.50:554/stream1")
         self.assertNotIn("camera-password", source)
         self.assertNotIn("secret", source)
+
+    def test_configured_sources_come_only_from_environment_settings(self):
+        manager = ServerCameraManager()
+
+        with patch.object(server_camera_service.settings, "check_in_camera_source", " 1 "), patch.object(
+            server_camera_service.settings,
+            "check_out_camera_source",
+            "rtsp://camera.local/stream",
+        ):
+            self.assertEqual(manager.configured_source("check_in"), "1")
+            self.assertEqual(
+                manager.configured_source("check_out"),
+                "rtsp://camera.local/stream",
+            )
+
+    def test_auto_start_comes_only_from_environment_settings(self):
+        manager = ServerCameraManager()
+
+        with patch.object(server_camera_service.settings, "auto_start_cameras", True):
+            self.assertTrue(manager.auto_start_enabled())
+        with patch.object(server_camera_service.settings, "auto_start_cameras", False):
+            self.assertFalse(manager.auto_start_enabled())
 
 
 if __name__ == "__main__":

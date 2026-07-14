@@ -224,7 +224,7 @@ TRUSTED_HOSTS=<domain-hoac-ip-duoc-phep>
 3. Tạo tài khoản `student` và liên kết với đúng hồ sơ sinh viên.
 4. Tạo tài khoản `lab_manager` nếu cần người vận hành phòng lab.
 5. Đăng ký FaceID cho sinh viên hoặc để sinh viên gửi yêu cầu đăng ký FaceID.
-6. Cấu hình camera trình duyệt, webcam hoặc RTSP camera.
+6. Cấu hình webcam hoặc RTSP camera trong file `.env`.
 7. Dùng camera realtime để check-in/check-out.
 8. Sinh viên nộp báo cáo, lab manager phản hồi hoặc duyệt báo cáo.
 
@@ -317,10 +317,9 @@ File model này nhỏ, đang được giữ trong project để người khác c
 
 ## Camera Và RTSP
 
-Hệ thống có 2 nhóm camera:
-
-- **Camera trình duyệt:** tiện cho demo và đăng ký khuôn mặt.
-- **Server camera:** backend đọc camera bằng OpenCV `VideoCapture`, dùng cho webcam/USB camera hoặc RTSP/IP camera.
+Camera chấm công luôn do backend đọc bằng OpenCV `VideoCapture`, dùng cho
+webcam/USB camera hoặc RTSP/IP camera. Camera trình duyệt chỉ còn được dùng cho
+tính năng đăng ký khuôn mặt và không tham gia luồng chấm công.
 
 Cấu hình webcam laptop:
 
@@ -336,7 +335,6 @@ Cấu hình RTSP/IP camera:
 AUTO_START_CAMERAS=true
 CHECK_IN_CAMERA_SOURCE=rtsp://user:pass@192.168.1.50:554/stream1
 CHECK_OUT_CAMERA_SOURCE=rtsp://user:pass@192.168.1.51:554/stream1
-REALTIME_CAMERA_MODE=server
 SERVER_CAMERA_PREVIEW_FPS=8
 SERVER_CAMERA_JPEG_QUALITY=80
 ```
@@ -346,8 +344,8 @@ Lưu ý:
 - `0`, `1`, `2` là webcam/USB camera trên máy.
 - URL `rtsp://...` dùng cho IP camera.
 - Khi `AUTO_START_CAMERAS=true`, server tự start camera sau khi khởi động.
-- Nếu `.env` có `CHECK_IN_CAMERA_SOURCE` hoặc `CHECK_OUT_CAMERA_SOURCE`, giá trị này được ưu tiên hơn cấu hình lưu trong database.
-- Nếu muốn chỉnh source bằng giao diện Settings, hãy để các biến source trong `.env` rỗng.
+- Nguồn camera và chế độ tự khởi động chỉ được cấu hình trong `.env`; trang Settings không lưu các giá trị này.
+- Sau khi đổi nguồn camera trong `.env`, cần khởi động lại backend.
 - Không ghi URL RTSP chứa mật khẩu vào README, source code hoặc `.env.example`.
 
 API điều khiển server camera. Tất cả endpoint yêu cầu session hợp lệ với quyền `admin` hoặc `lab_manager`:
@@ -364,21 +362,19 @@ POST /api/server-cameras/start-all
 POST /api/server-cameras/stop-all
 ```
 
-`REALTIME_CAMERA_MODE=browser` giữ luồng webcam trình duyệt gửi JPEG qua
-WebSocket. `REALTIME_CAMERA_MODE=server` chuyển dashboard sang camera do backend
-quản lý: hình ảnh được phát bằng MJPEG, nút bật/tắt gọi API server camera và
-canvas lấy `last_result` từ API trạng thái để vẽ bounding box. Đóng trình duyệt
-không dừng camera backend; khi `AUTO_START_CAMERAS=true`, camera vẫn nhận diện và
-ghi log dù không có người mở dashboard.
+Dashboard luôn dùng camera do backend quản lý: hình ảnh được phát bằng MJPEG,
+nút bật/tắt gọi API server camera và canvas lấy `last_result` từ API trạng thái
+để vẽ bounding box. API trạng thái được gọi mỗi giây. Đóng trình duyệt không
+dừng camera backend; khi `AUTO_START_CAMERAS=true`, camera vẫn nhận diện và ghi
+log dù không có người mở dashboard.
 
 Endpoint MJPEG dùng chung camera thread đang chạy, không mở thêm `VideoCapture`
 cho từng người xem. Endpoint yêu cầu tài khoản `admin` hoặc `lab_manager`, không
 cache hình ảnh và API trạng thái che thông tin đăng nhập nằm trong URL RTSP.
 
-Mỗi lần khởi động camera và mỗi kết nối WebSocket có một realtime session scope
-riêng. Phiếu liveness, trạng thái người chưa nhận diện và cleanup chỉ hoạt động
-trong scope đó, nên nhiều nguồn cùng `check_in` hoặc `check_out` không cộng dồn
-phiếu của nhau. Session của nguồn được xóa khi camera dừng hoặc WebSocket ngắt.
+Mỗi lần khởi động camera có một realtime session scope riêng. Phiếu liveness,
+trạng thái người chưa nhận diện và cleanup chỉ hoạt động trong scope đó, nên
+nhiều nguồn không cộng dồn phiếu của nhau. Session được xóa khi camera dừng.
 
 ---
 

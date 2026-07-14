@@ -9,7 +9,6 @@ from uuid import uuid4
 import cv2
 
 from app.core.config import settings
-from app.db import get_setting
 from app.services.realtime_recognition_service import process_realtime_frame
 from app.services.realtime_session_service import clear_presence_scope
 
@@ -97,17 +96,15 @@ class ServerCameraManager:
         self._frame_condition = threading.Condition(self._lock)
 
     def configured_source(self, action: str) -> str:
-        key = "check_out_camera_source" if action == "check_out" else "check_in_camera_source"
-        env_source = settings.check_out_camera_source if action == "check_out" else settings.check_in_camera_source
-        if str(env_source or "").strip():
-            return str(env_source).strip()
-        return str(get_setting(key, "") or "").strip()
+        source = (
+            settings.check_out_camera_source
+            if action == "check_out"
+            else settings.check_in_camera_source
+        )
+        return str(source or "").strip()
 
     def auto_start_enabled(self) -> bool:
-        if settings.auto_start_cameras:
-            return True
-        value = str(get_setting("auto_start_cameras", "false")).lower()
-        return value in {"1", "true", "yes", "on"}
+        return settings.auto_start_cameras
 
     def start_all_configured(self) -> dict:
         statuses = {}

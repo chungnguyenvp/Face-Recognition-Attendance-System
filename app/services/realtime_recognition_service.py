@@ -86,7 +86,7 @@ def process_realtime_frame(
 ) -> dict:
     threshold = float(setting_getter("face_threshold", 0.55))
     cooldown = int(setting_getter("check_cooldown_seconds", 30))
-    active_action = action if action in {"check_in", "check_out"} else setting_getter("camera_mode", "check_in")
+    active_action = action if action in {"check_in", "check_out"} else "check_in"
     known = face_embedding_cache.get_known_faces(known_faces_loader)
     recognizer = recognize_faces or face_service.recognize_faces
     results = recognizer(image, known, threshold)
