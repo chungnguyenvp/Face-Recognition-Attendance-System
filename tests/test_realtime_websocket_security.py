@@ -25,6 +25,7 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         self.original_decode_realtime_image = realtime.decode_realtime_image
         self.original_recognize_faces = realtime.face_service.recognize_faces
         self.original_cleanup_presence_sessions = realtime.cleanup_presence_sessions
+        self.original_clear_presence_scope = realtime.clear_presence_scope
         self.original_session_decision = realtime.session_decision
         self.original_allowed_origins = realtime.settings.websocket_allowed_origins
         self.original_max_message_bytes = realtime.settings.websocket_max_message_bytes
@@ -57,6 +58,7 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         realtime.decode_realtime_image = self.original_decode_realtime_image
         realtime.face_service.recognize_faces = self.original_recognize_faces
         realtime.cleanup_presence_sessions = self.original_cleanup_presence_sessions
+        realtime.clear_presence_scope = self.original_clear_presence_scope
         realtime.session_decision = self.original_session_decision
         realtime.settings.websocket_allowed_origins = self.original_allowed_origins
         realtime.settings.websocket_max_message_bytes = self.original_max_message_bytes
@@ -139,7 +141,7 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
                 "note": None,
             }
         ]
-        self.realtime.session_decision = lambda _action, item: (
+        self.realtime.session_decision = lambda _action, item, _scope: (
             None,
             f"student:{item['student_id']}:check_in",
             "pending",
@@ -176,7 +178,11 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
                 "note": None,
             }
         ]
-        self.realtime.session_decision = lambda _action, _item: (None, "unknown:check_in", "pending")
+        self.realtime.session_decision = lambda _action, _item, _scope: (
+            None,
+            "unknown:check_in",
+            "pending",
+        )
         client = self.client()
 
         with client.websocket_connect("/ws/recognize?action=check_in", headers={"origin": "http://testserver"}) as websocket:
@@ -189,6 +195,44 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         self.assertFalse(item["recognized"])
         self.assertEqual(item["full_name"], "Unknown")
         self.assertEqual(item["display_status"], "pending")
+
+    def test_each_websocket_uses_and_clears_a_unique_session_scope(self):
+        scopes = []
+        cleared_scopes = []
+        self.realtime.face_service.recognize_faces = lambda _image, _known, _threshold: [
+            {
+                "bbox": [30, 40, 130, 170],
+                "student_id": None,
+                "student_code": "Unknown",
+                "full_name": "Unknown",
+                "confidence": None,
+                "recognized": False,
+                "liveness_status": "live",
+                "quality": {"ok": True},
+                "note": None,
+            }
+        ]
+
+        def decide(_action, _item, scope):
+            scopes.append(scope)
+            return None, f"{scope}:unknown:1:check_in", "pending"
+
+        self.realtime.session_decision = decide
+        self.realtime.clear_presence_scope = cleared_scopes.append
+        client = self.client()
+
+        for _ in range(2):
+            with client.websocket_connect(
+                "/ws/recognize?action=check_in",
+                headers={"origin": "http://testserver"},
+            ) as websocket:
+                websocket.send_json({"image": "data:image/jpeg;base64,abc"})
+                self.assertEqual(websocket.receive_json()["type"], "result")
+
+        self.assertEqual(len(scopes), 2)
+        self.assertNotEqual(scopes[0], scopes[1])
+        self.assertTrue(all(scope.startswith("websocket:") for scope in scopes))
+        self.assertCountEqual(cleared_scopes, scopes)
 
     def test_tiny_background_faces_do_not_block_primary_recognition(self):
         self.realtime.face_service.recognize_faces = lambda _image, _known, _threshold: [
@@ -223,7 +267,7 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
                 "note": None,
             },
         ]
-        self.realtime.session_decision = lambda _action, item: (
+        self.realtime.session_decision = lambda _action, item, _scope: (
             None,
             f"student:{item['student_id']}:check_in",
             "pending",

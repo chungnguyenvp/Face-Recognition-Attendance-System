@@ -3,12 +3,14 @@ import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
+from uuid import uuid4
 
 import cv2
 
 from app.core.config import settings
 from app.db import get_setting
 from app.services.realtime_recognition_service import process_realtime_frame
+from app.services.realtime_session_service import clear_presence_scope
 
 
 VALID_ACTIONS = {"check_in", "check_out"}
@@ -48,6 +50,7 @@ class CameraRuntime:
     last_result: dict | None = None
     frames_read: int = 0
     frames_processed: int = 0
+    session_scope: str | None = field(default=None, repr=False)
     thread: threading.Thread | None = field(default=None, repr=False)
     stop_event: threading.Event = field(default_factory=threading.Event, repr=False)
 
@@ -103,10 +106,11 @@ class ServerCameraManager:
             runtime.connected = False
             runtime.last_error = None
             runtime.last_started_at = datetime.now().isoformat(timespec="seconds")
+            runtime.session_scope = f"server-camera:{action}:{uuid4().hex}"
             runtime.stop_event.clear()
             runtime.thread = threading.Thread(
                 target=self._run_camera,
-                args=(action, parsed_source),
+                args=(action, parsed_source, runtime.session_scope),
                 name=f"server-camera-{action}",
                 daemon=True,
             )
@@ -127,10 +131,15 @@ class ServerCameraManager:
                 runtime.connected = False
                 runtime.last_error = "Camera worker is still stopping."
                 return self._status_unlocked(runtime)
+            session_scope = runtime.session_scope
             runtime.running = False
             runtime.connected = False
+            runtime.session_scope = None
             runtime.thread = None
-            return self._status_unlocked(runtime)
+            status = self._status_unlocked(runtime)
+        if session_scope:
+            clear_presence_scope(session_scope)
+        return status
 
     def status(self, action: str | None = None):
         with self._lock:
@@ -139,7 +148,7 @@ class ServerCameraManager:
                 return self._status_unlocked(self._cameras[action])
             return {key: self._status_unlocked(runtime) for key, runtime in self._cameras.items()}
 
-    def _run_camera(self, action: str, source) -> None:
+    def _run_camera(self, action: str, source, session_scope: str) -> None:
         reconnect_seconds = max(1.0, float(settings.camera_reconnect_seconds))
         process_interval = max(0.05, float(settings.server_camera_process_interval_seconds))
         cap = None
@@ -177,7 +186,12 @@ class ServerCameraManager:
 
                     try:
                         evidence = encode_frame_data_url(frame)
-                        result = process_realtime_frame(frame, action, evidence)
+                        result = process_realtime_frame(
+                            frame,
+                            action,
+                            evidence,
+                            session_scope=session_scope,
+                        )
                         with self._lock:
                             runtime = self._cameras[action]
                             runtime.frames_processed += 1
@@ -196,10 +210,13 @@ class ServerCameraManager:
         finally:
             if cap:
                 cap.release()
+            clear_presence_scope(session_scope)
             with self._lock:
                 runtime = self._cameras[action]
                 runtime.running = False
                 runtime.connected = False
+                if runtime.session_scope == session_scope:
+                    runtime.session_scope = None
                 if runtime.thread is threading.current_thread():
                     runtime.thread = None
 

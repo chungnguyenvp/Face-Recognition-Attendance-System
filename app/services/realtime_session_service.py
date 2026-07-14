@@ -1,5 +1,7 @@
 import time
 from collections import deque
+from itertools import count
+from threading import RLock
 
 
 SESSION_STALE_SECONDS = 2.0
@@ -11,8 +13,23 @@ DENIED_REQUIRED_FRAMES = 10
 DENIED_FAKE_VOTES = 8
 UNKNOWN_REQUIRED_FRAMES = 10
 UNKNOWN_VOTES = 8
+DEFAULT_SESSION_SCOPE = "default"
 
-_presence_sessions = {}
+
+class PresenceSessionStore:
+    def __init__(self):
+        self.sessions: dict[str, dict] = {}
+        self.lock = RLock()
+        self._unknown_track_ids = count(1)
+
+    def next_unknown_track_id(self) -> int:
+        return next(self._unknown_track_ids)
+
+
+_presence_store = PresenceSessionStore()
+# Kept as an alias for diagnostics and existing tests. All production access is
+# serialized through _presence_store.lock.
+_presence_sessions = _presence_store.sessions
 
 
 def _face_area(item: dict) -> float:
@@ -23,13 +40,25 @@ def _face_area(item: dict) -> float:
     return max(0.0, x2 - x1) * max(0.0, y2 - y1)
 
 
-def _session_key(action: str, item: dict) -> str:
+def _normalized_scope(scope_id: str | None) -> str:
+    return str(scope_id or DEFAULT_SESSION_SCOPE)
+
+
+def _session_key(
+    action: str,
+    item: dict,
+    scope_id: str = DEFAULT_SESSION_SCOPE,
+    unknown_track_id: int | None = None,
+) -> str:
+    scope = _normalized_scope(scope_id)
     if item.get("recognized") and item.get("student_id"):
-        return f"student:{item['student_id']}:{action}"
-    return f"unknown:{action}"
+        return f"{scope}:student:{item['student_id']}:{action}"
+    if unknown_track_id is None:
+        return f"{scope}:unknown:untracked:{action}"
+    return f"{scope}:unknown:{unknown_track_id}:{action}"
 
 
-def _get_session(key: str) -> dict:
+def _get_session(key: str, scope_id: str, action: str, subject_type: str) -> dict:
     now = time.monotonic()
     session = _presence_sessions.get(key)
     if session is None or now - session["last_seen"] > SESSION_STALE_SECONDS:
@@ -38,6 +67,9 @@ def _get_session(key: str) -> dict:
             "frames": deque(maxlen=FRAME_DEBUG_MAXLEN),
             "last_seen": now,
             "finalized": None,
+            "scope_id": _normalized_scope(scope_id),
+            "action": action,
+            "subject_type": subject_type,
         }
         _presence_sessions[key] = session
     if "frames" not in session:
@@ -46,15 +78,33 @@ def _get_session(key: str) -> dict:
     return session
 
 
-def _cleanup_presence_sessions(seen_keys: set[str]) -> None:
-    now = time.monotonic()
-    stale_keys = [
-        key
-        for key, session in _presence_sessions.items()
-        if key not in seen_keys and now - session["last_seen"] > SESSION_STALE_SECONDS
-    ]
-    for key in stale_keys:
-        _presence_sessions.pop(key, None)
+def _cleanup_presence_sessions(
+    seen_keys: set[str], scope_id: str = DEFAULT_SESSION_SCOPE
+) -> None:
+    scope = _normalized_scope(scope_id)
+    with _presence_store.lock:
+        now = time.monotonic()
+        stale_keys = [
+            key
+            for key, session in _presence_sessions.items()
+            if session.get("scope_id") == scope
+            and key not in seen_keys
+            and now - session["last_seen"] > SESSION_STALE_SECONDS
+        ]
+        for key in stale_keys:
+            _presence_sessions.pop(key, None)
+
+
+def _clear_presence_scope(scope_id: str) -> None:
+    scope = _normalized_scope(scope_id)
+    with _presence_store.lock:
+        scoped_keys = [
+            key
+            for key, session in _presence_sessions.items()
+            if session.get("scope_id") == scope
+        ]
+        for key in scoped_keys:
+            _presence_sessions.pop(key, None)
 
 
 def _bbox_iou(a: list, b: list) -> float:
@@ -92,14 +142,16 @@ def _matches_session_bbox(item: dict, session: dict) -> bool:
     return _bbox_iou(item_bbox, session_bbox) >= 0.15 or _bbox_center_distance_ratio(item_bbox, session_bbox) <= 0.35
 
 
-def _matching_active_student_session(action: str, item: dict) -> tuple[str, dict] | None:
+def _matching_active_session(
+    scope_id: str, action: str, item: dict, subject_type: str
+) -> tuple[str, dict] | None:
     now = time.monotonic()
-    suffix = f":{action}"
     candidates = [
         (key, session)
         for key, session in _presence_sessions.items()
-        if key.startswith("student:")
-        and key.endswith(suffix)
+        if session.get("scope_id") == _normalized_scope(scope_id)
+        and session.get("action") == action
+        and session.get("subject_type") == subject_type
         and now - session["last_seen"] <= SESSION_STALE_SECONDS
         and _matches_session_bbox(item, session)
     ]
@@ -108,12 +160,28 @@ def _matching_active_student_session(action: str, item: dict) -> tuple[str, dict
     return max(candidates, key=lambda pair: pair[1]["last_seen"])
 
 
+def _matching_active_student_session(
+    scope_id: str, action: str, item: dict
+) -> tuple[str, dict] | None:
+    return _matching_active_session(scope_id, action, item, "student")
+
+
+def _matching_active_unknown_session(
+    scope_id: str, action: str, item: dict
+) -> tuple[str, dict] | None:
+    return _matching_active_session(scope_id, action, item, "unknown")
+
+
 def _remember_student(session: dict, item: dict) -> None:
     session["student"] = {
         "student_id": item.get("student_id"),
         "student_code": item.get("student_code"),
         "full_name": item.get("full_name"),
     }
+    session["bbox"] = item.get("bbox")
+
+
+def _remember_unknown(session: dict, item: dict) -> None:
     session["bbox"] = item.get("bbox")
 
 
@@ -202,83 +270,110 @@ def _apply_recent_duplicate_item(item: dict, note: str) -> None:
     item["logged"] = False
 
 
-def _session_decision(action: str, item: dict) -> tuple[str | None, str, str]:
-    key = _session_key(action, item)
-    session = _get_session(key)
-    if session["finalized"] and session["finalized"] != "success":
-        _remember_frame(session, item, None)
-        _apply_display_student(item, session)
-        return None, key, session["finalized"]
+def _session_decision(
+    action: str,
+    item: dict,
+    scope_id: str = DEFAULT_SESSION_SCOPE,
+) -> tuple[str | None, str, str]:
+    scope = _normalized_scope(scope_id)
+    with _presence_store.lock:
+        if item.get("recognized") and item.get("student_id"):
+            key = _session_key(action, item, scope)
+            session = _get_session(key, scope, action, "student")
+            if session["finalized"] and session["finalized"] != "success":
+                _remember_frame(session, item, None)
+                _apply_display_student(item, session)
+                return None, key, session["finalized"]
 
-    if item.get("recognized"):
-        _remember_student(session, item)
-        vote = _vote_from_liveness(item)
-        _remember_frame(session, item, vote)
-        if vote is None:
+            _remember_student(session, item)
+            vote = _vote_from_liveness(item)
+            _remember_frame(session, item, vote)
+            if vote is None:
+                _apply_display_student(item, session)
+                return None, key, "pending"
+
+            session["votes"].append(vote)
+            votes = list(session["votes"])
+            if _has_spoof_majority(votes):
+                session["finalized"] = "denied"
+                _apply_display_student(item, session)
+                return "denied", key, "denied"
+            if session["finalized"] == "success":
+                _apply_display_student(item, session)
+                return None, key, "success"
+            success_votes = votes[-SUCCESS_REQUIRED_FRAMES:]
+            if (
+                len(success_votes) == SUCCESS_REQUIRED_FRAMES
+                and success_votes.count("real") >= SUCCESS_REAL_VOTES
+            ):
+                session["finalized"] = "success"
+                _apply_display_student(item, session)
+                return "success", key, "success"
             _apply_display_student(item, session)
             return None, key, "pending"
 
-        session["votes"].append(vote)
-        votes = list(session["votes"])
-        if _has_spoof_majority(votes):
-            session["finalized"] = "denied"
-            _apply_display_student(item, session)
-            return "denied", key, "denied"
-        if session["finalized"] == "success":
-            _apply_display_student(item, session)
-            return None, key, "success"
-        success_votes = votes[-SUCCESS_REQUIRED_FRAMES:]
-        if len(success_votes) == SUCCESS_REQUIRED_FRAMES and success_votes.count("real") >= SUCCESS_REAL_VOTES:
-            session["finalized"] = "success"
-            _apply_display_student(item, session)
-            return "success", key, "success"
-        _apply_display_student(item, session)
-        return None, key, "pending"
-
-    active_student = _matching_active_student_session(action, item)
-    if active_student:
-        active_key, active_session = active_student
-        active_session["last_seen"] = time.monotonic()
-        vote = _vote_from_liveness(item)
-        _remember_frame(active_session, item, vote)
-        if vote is None:
-            _apply_display_student(item, active_session)
-            return None, active_key, "pending"
-        if vote == "fake":
-            active_session["votes"].append(vote)
-            votes = list(active_session["votes"])
-            if _has_spoof_majority(votes):
-                active_session["finalized"] = "denied"
+        active_student = _matching_active_student_session(scope, action, item)
+        if active_student:
+            active_key, active_session = active_student
+            active_session["last_seen"] = time.monotonic()
+            active_session["bbox"] = item.get("bbox")
+            vote = _vote_from_liveness(item)
+            _remember_frame(active_session, item, vote)
+            if vote is None:
                 _apply_display_student(item, active_session)
-                return "denied", active_key, "denied"
-        _apply_display_student(item, active_session)
-        return None, active_key, active_session["finalized"] or "pending"
+                return None, active_key, "pending"
+            if vote == "fake":
+                active_session["votes"].append(vote)
+                votes = list(active_session["votes"])
+                if _has_spoof_majority(votes):
+                    active_session["finalized"] = "denied"
+                    _apply_display_student(item, active_session)
+                    return "denied", active_key, "denied"
+            _apply_display_student(item, active_session)
+            return None, active_key, active_session["finalized"] or "pending"
 
-    vote = _vote_from_liveness(item)
-    _remember_frame(session, item, vote)
-    if vote == "fake":
-        session["votes"].append(vote)
+        active_unknown = _matching_active_unknown_session(scope, action, item)
+        if active_unknown:
+            key, session = active_unknown
+            session["last_seen"] = time.monotonic()
+        else:
+            unknown_track_id = _presence_store.next_unknown_track_id()
+            key = _session_key(action, item, scope, unknown_track_id)
+            session = _get_session(key, scope, action, "unknown")
+
+        _remember_unknown(session, item)
+        if session["finalized"]:
+            _remember_frame(session, item, None)
+            return None, key, session["finalized"]
+        vote = _vote_from_liveness(item)
+        _remember_frame(session, item, vote)
+        if vote == "fake":
+            session["votes"].append(vote)
+            votes = list(session["votes"])
+            if _has_spoof_majority(votes):
+                session["finalized"] = "denied"
+                return "denied", key, "denied"
+            return None, key, "pending"
+
+        if vote is None:
+            return None, key, "pending"
+
+        session["votes"].append("unknown")
         votes = list(session["votes"])
-        if _has_spoof_majority(votes):
-            session["finalized"] = "denied"
-            return "denied", key, "denied"
+        unknown_votes = votes[-UNKNOWN_REQUIRED_FRAMES:]
+        if (
+            len(unknown_votes) == UNKNOWN_REQUIRED_FRAMES
+            and unknown_votes.count("unknown") >= UNKNOWN_VOTES
+        ):
+            session["finalized"] = "warning"
+            return "warning", key, "warning"
         return None, key, "pending"
-
-    if vote is None:
-        return None, key, "pending"
-
-    session["votes"].append("unknown")
-    votes = list(session["votes"])
-    unknown_votes = votes[-UNKNOWN_REQUIRED_FRAMES:]
-    if len(unknown_votes) == UNKNOWN_REQUIRED_FRAMES and unknown_votes.count("unknown") >= UNKNOWN_VOTES:
-        session["finalized"] = "warning"
-        return "warning", key, "warning"
-    return None, key, "pending"
 
 
 face_area = _face_area
 build_session_key = _session_key
 cleanup_presence_sessions = _cleanup_presence_sessions
+clear_presence_scope = _clear_presence_scope
 liveness_history_note = _liveness_history_note
 spoof_alert_message = _spoof_alert_message
 apply_denied_item = _apply_denied_item

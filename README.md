@@ -359,6 +359,11 @@ POST /api/server-cameras/start-all
 POST /api/server-cameras/stop-all
 ```
 
+Mỗi lần khởi động camera và mỗi kết nối WebSocket có một realtime session scope
+riêng. Phiếu liveness, trạng thái người chưa nhận diện và cleanup chỉ hoạt động
+trong scope đó, nên nhiều nguồn cùng `check_in` hoặc `check_out` không cộng dồn
+phiếu của nhau. Session của nguồn được xóa khi camera dừng hoặc WebSocket ngắt.
+
 ---
 
 ## Báo Cáo Sinh Viên

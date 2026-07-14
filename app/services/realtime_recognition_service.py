@@ -12,6 +12,7 @@ from app.services.realtime_access_service import (
     validate_attendance_transition,
 )
 from app.services.realtime_session_service import (
+    DEFAULT_SESSION_SCOPE,
     apply_denied_item,
     apply_recent_duplicate_item,
     cleanup_presence_sessions,
@@ -81,6 +82,7 @@ def process_realtime_frame(
     recognize_faces=None,
     cleanup_sessions=cleanup_presence_sessions,
     decide_session=session_decision,
+    session_scope: str = DEFAULT_SESSION_SCOPE,
 ) -> dict:
     threshold = float(setting_getter("face_threshold", 0.55))
     cooldown = int(setting_getter("check_cooldown_seconds", 30))
@@ -119,7 +121,7 @@ def process_realtime_frame(
                 item["logged"] = False
             else:
                 apply_secondary_display_item(item)
-        cleanup_sessions(seen_session_keys)
+        cleanup_sessions(seen_session_keys, session_scope)
         return {"type": "result", "action": active_action, "items": results}
 
     for item in actionable_results:
@@ -130,7 +132,7 @@ def process_realtime_frame(
         if item.get("recognized") and item.get("student_id"):
             transition_ok, transition_note = validate_attendance_transition(item["student_id"], active_action)
             if not transition_ok:
-                current_session_key = build_session_key(active_action, item)
+                current_session_key = build_session_key(active_action, item, session_scope)
                 seen_session_keys.add(current_session_key)
                 event_key = f"invalid_transition:{active_action}:{item['student_id']}"
 
@@ -150,7 +152,9 @@ def process_realtime_frame(
                 item["evidence_image_path"] = evidence_path
                 continue
 
-        decision, current_session_key, display_status = decide_session(active_action, item)
+        decision, current_session_key, display_status = decide_session(
+            active_action, item, session_scope
+        )
         seen_session_keys.add(current_session_key)
         item["decision"] = decision or "pending"
         item["session_state"] = display_status
@@ -197,5 +201,5 @@ def process_realtime_frame(
                 item["logged"] = False
                 item["note"] = "Cooldown: khong ghi canh bao khuon mat la qua gan."
 
-    cleanup_sessions(seen_session_keys)
+    cleanup_sessions(seen_session_keys, session_scope)
     return {"type": "result", "action": active_action, "items": results}

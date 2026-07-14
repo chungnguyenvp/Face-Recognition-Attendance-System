@@ -4,6 +4,7 @@ import json
 import logging
 from io import BytesIO
 from urllib.parse import urlsplit
+from uuid import uuid4
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from PIL import Image, UnidentifiedImageError
@@ -13,7 +14,11 @@ from app.db import get_setting
 from app.routers.deps import user_from_session_token
 from app.ai.face_engine import face_service
 from app.services.realtime_recognition_service import load_known_faces, process_realtime_frame
-from app.services.realtime_session_service import cleanup_presence_sessions, session_decision
+from app.services.realtime_session_service import (
+    cleanup_presence_sessions,
+    clear_presence_scope,
+    session_decision,
+)
 
 
 router = APIRouter(tags=["realtime"])
@@ -132,6 +137,7 @@ async def recognize_ws(websocket: WebSocket):
         await websocket.close()
         return
 
+    session_scope = f"websocket:{uuid4().hex}"
     frame_count = 0
     try:
         while True:
@@ -180,6 +186,7 @@ async def recognize_ws(websocket: WebSocket):
                 recognize_faces=face_service.recognize_faces,
                 cleanup_sessions=cleanup_presence_sessions,
                 decide_session=session_decision,
+                session_scope=session_scope,
             )
             await websocket.send_json(result)
     except WebSocketDisconnect:
@@ -187,3 +194,5 @@ async def recognize_ws(websocket: WebSocket):
     except Exception:
         logger.exception("Unexpected realtime websocket error")
         await websocket.send_json({"type": "error", "code": "internal_error", "message": SAFE_FRAME_ERROR_MESSAGE})
+    finally:
+        clear_presence_scope(session_scope)

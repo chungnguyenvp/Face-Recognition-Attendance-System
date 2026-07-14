@@ -56,7 +56,13 @@ class RealtimeRecognitionServiceTests(unittest.TestCase):
             "note": None,
         }
 
-    def process(self, items, decide_session, cleanup_sessions=lambda _keys: None):
+    def process(
+        self,
+        items,
+        decide_session,
+        cleanup_sessions=lambda _keys, _scope: None,
+        session_scope="test-source",
+    ):
         return recognition.process_realtime_frame(
             object(),
             "check_in",
@@ -66,6 +72,7 @@ class RealtimeRecognitionServiceTests(unittest.TestCase):
             recognize_faces=lambda _image, _known, _threshold: items,
             cleanup_sessions=cleanup_sessions,
             decide_session=decide_session,
+            session_scope=session_scope,
         )
 
     def test_multiple_actionable_faces_are_denied_without_logging(self):
@@ -73,12 +80,16 @@ class RealtimeRecognitionServiceTests(unittest.TestCase):
         second = self.recognized_item() | {"student_id": 8, "student_code": "SV008", "bbox": [0, 0, 200, 200]}
         cleaned = []
 
-        result = self.process([first, second], lambda *_args: self.fail("must not decide"), cleaned.append)
+        result = self.process(
+            [first, second],
+            lambda *_args: self.fail("must not decide"),
+            lambda keys, scope: cleaned.append((keys, scope)),
+        )
 
         self.assertEqual(result["items"][0]["decision"], "denied")
         self.assertEqual(result["items"][0]["warning_type"], "multiple_faces")
         self.assertEqual(result["items"][1]["decision"], "secondary")
-        self.assertEqual(cleaned, [set()])
+        self.assertEqual(cleaned, [(set(), "test-source")])
 
     def test_success_logs_once_with_evidence_path(self):
         item = self.recognized_item()
