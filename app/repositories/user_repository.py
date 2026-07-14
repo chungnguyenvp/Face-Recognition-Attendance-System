@@ -65,6 +65,17 @@ def get_user_delete_summary(db, user_id: int):
     ).fetchone()
 
 
+def get_student_user_by_student_id(db, student_id: int):
+    return db.execute(
+        """
+        SELECT id, username, role, student_id, status
+        FROM users
+        WHERE role='student' AND student_id=?
+        """,
+        (student_id,),
+    ).fetchone()
+
+
 def update_user_student_id(db, user_id: int, student_id: int) -> None:
     db.execute("UPDATE users SET student_id=? WHERE id=?", (student_id, user_id))
 

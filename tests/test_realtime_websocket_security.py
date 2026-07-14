@@ -8,6 +8,7 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
             from fastapi.testclient import TestClient
             from starlette.websockets import WebSocketDisconnect
             import app.routers.realtime as realtime
+            import app.services.realtime_recognition_service as recognition
         except ModuleNotFoundError as exc:
             self.skipTest(f"{exc.name} is not installed in this test environment.")
 
@@ -15,6 +16,7 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         self.TestClient = TestClient
         self.WebSocketDisconnect = WebSocketDisconnect
         self.realtime = realtime
+        self.recognition = recognition
 
         self.original_websocket_auth = realtime.websocket_auth
         self.original_load_known_faces = realtime.load_known_faces
@@ -26,6 +28,9 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         self.original_session_decision = realtime.session_decision
         self.original_allowed_origins = realtime.settings.websocket_allowed_origins
         self.original_max_message_bytes = realtime.settings.websocket_max_message_bytes
+        self.original_validate_attendance_transition = (
+            recognition.validate_attendance_transition
+        )
 
         async def allow_websocket(_websocket):
             return True
@@ -36,6 +41,10 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         realtime.decode_realtime_image = lambda _image_data: object()
         realtime.settings.websocket_allowed_origins = "http://allowed.test"
         realtime.settings.websocket_max_message_bytes = 512 * 1024
+        recognition.validate_attendance_transition = lambda _student_id, _action: (
+            True,
+            None,
+        )
 
     def tearDown(self):
         realtime = getattr(self, "realtime", None)
@@ -51,6 +60,9 @@ class RealtimeWebSocketSecurityTests(unittest.TestCase):
         realtime.session_decision = self.original_session_decision
         realtime.settings.websocket_allowed_origins = self.original_allowed_origins
         realtime.settings.websocket_max_message_bytes = self.original_max_message_bytes
+        self.recognition.validate_attendance_transition = (
+            self.original_validate_attendance_transition
+        )
 
     def client(self):
         app = self.FastAPI()

@@ -229,6 +229,52 @@ class OperationalSmokeTests(unittest.TestCase):
         deleted = client.delete(f"/api/work-schedule/exceptions/{exception_id}", headers=self.csrf_headers(client))
         self.assertEqual(deleted.status_code, 200, deleted.text)
 
+    def test_deleting_student_deactivates_linked_user_and_revokes_session(self):
+        admin = self.client()
+        self.login(admin)
+        student_id = self.create_student(admin, "SV-DELETE", "Delete Student")
+        student_user = self.create_user(
+            admin,
+            "student-delete",
+            "student123",
+            "student",
+            student_id,
+        )
+
+        student_client = self.client()
+        self.login(student_client, "student-delete", "student123")
+
+        response = admin.delete(
+            f"/api/students/{student_id}",
+            headers=self.csrf_headers(admin),
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertTrue(response.json()["linked_user_deactivated"])
+
+        with self.db_module.get_db() as db:
+            deleted_student = db.execute(
+                "SELECT id FROM students WHERE id=?",
+                (student_id,),
+            ).fetchone()
+            user = db.execute(
+                "SELECT student_id, status FROM users WHERE id=?",
+                (student_user["id"],),
+            ).fetchone()
+            active_sessions = db.execute(
+                """
+                SELECT COUNT(*)
+                FROM user_sessions
+                WHERE user_id=? AND revoked_at IS NULL
+                """,
+                (student_user["id"],),
+            ).fetchone()[0]
+
+        self.assertIsNone(deleted_student)
+        self.assertIsNone(user["student_id"])
+        self.assertEqual(user["status"], "inactive")
+        self.assertEqual(active_sessions, 0)
+        self.assertEqual(student_client.get("/api/auth/me").status_code, 401)
+
 
 if __name__ == "__main__":
     unittest.main()

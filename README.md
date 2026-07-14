@@ -399,6 +399,20 @@ API kiểm tra session và quyền trước khi trả file. Khi sao lưu dữ li
 
 > 🔐 **Dữ liệu cá nhân:** `data/face_lab.db` và `storage/private` có thể chứa dữ liệu sinh viên thật (ảnh khuôn mặt, embedding, lịch sử ra/vào). Cân nhắc kỹ trước khi chia sẻ công khai; với dữ liệu thật cần tuân thủ quy định bảo vệ dữ liệu cá nhân hiện hành.
 
+### Nâng Cấp Database
+
+Ứng dụng lưu lịch sử migration trong bảng `schema_migrations`. Trước lần khởi động đầu tiên sau khi cập nhật code, hãy dừng server và tạo một bản sao lưu SQLite nhất quán cùng thư mục `storage/private`.
+
+Migration sửa liên kết tài khoản sinh viên sẽ:
+
+- Giữ nguyên ID, username, password hash, vai trò và dữ liệu hợp lệ.
+- Chuyển tài khoản `student` có liên kết hồ sơ không tồn tại sang `inactive`.
+- Xóa liên kết `student_id` không hợp lệ và thu hồi session của tài khoản đó.
+- Bổ sung foreign key `users.student_id -> students.id` với `ON DELETE SET NULL`.
+- Bổ sung ràng buộc `request_type IN ('initial', 'update')` cho yêu cầu FaceID.
+
+Không copy nóng riêng file `face_lab.db` khi WAL đang hoạt động. Nên dùng SQLite Backup API hoặc dừng ứng dụng trước khi sao lưu.
+
 ---
 
 ## Kiểm Thử
@@ -424,6 +438,7 @@ python -m ruff check app tests
 
 ```text
 app/                    Backend FastAPI: router, service, repository, schema
+app/migrations.py       Migration SQLite có version và kiểm tra toàn vẹn
 web/                    Giao diện HTML/CSS/JavaScript
 data/                   SQLite database local
 storage/private/        File riêng tư, chỉ truy cập qua API có kiểm quyền

@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from app.core.config import settings
 from app.core.security import hash_password
+from app.migrations import run_schema_migrations
 
 
 os.makedirs(os.path.dirname(settings.database_path), exist_ok=True)
@@ -268,23 +269,7 @@ def init_db():
             """
         )
         _migrate_students_remove_contact_columns(db)
-        user_columns = {
-            row["name"]
-            for row in db.execute("PRAGMA table_info(users)").fetchall()
-        }
-        if "student_id" not in user_columns:
-            db.execute("ALTER TABLE users ADD COLUMN student_id INTEGER")
-        if "status" not in user_columns:
-            db.execute("ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'")
-        face_request_columns = {
-            row["name"] for row in db.execute("PRAGMA table_info(face_registration_requests)").fetchall()
-        }
-        if "request_type" not in face_request_columns:
-            db.execute("ALTER TABLE face_registration_requests ADD COLUMN request_type TEXT NOT NULL DEFAULT 'initial'")
-        if "face_count_at_submit" not in face_request_columns:
-            db.execute("ALTER TABLE face_registration_requests ADD COLUMN face_count_at_submit INTEGER NOT NULL DEFAULT 0")
-        if "planned_remove_count" not in face_request_columns:
-            db.execute("ALTER TABLE face_registration_requests ADD COLUMN planned_remove_count INTEGER NOT NULL DEFAULT 0")
+        run_schema_migrations(db)
         db.execute("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_face_registration_requests_student_created ON face_registration_requests(student_id, created_at DESC)")
         db.execute("CREATE INDEX IF NOT EXISTS idx_face_registration_requests_status_created ON face_registration_requests(status, created_at DESC)")

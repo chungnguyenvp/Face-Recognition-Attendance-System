@@ -5,7 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.config import settings
 from app.db import get_db, get_setting, row_to_dict
-from app.repositories import leave_repository, student_face_repository, student_repository
+from app.repositories import (
+    leave_repository,
+    student_face_repository,
+    student_repository,
+    user_repository,
+)
 from app.routers.deps import require_admin, require_admin_or_lab_manager
 from app.schemas.students import StudentCreate, StudentUpdate, StudentWorkTimeUpdate
 from app.services.attendance_service import recalculate_student_attendance_records
@@ -16,6 +21,7 @@ from app.services.student_face_service import (
     delete_face_image_files as _delete_face_image_files,
     delete_student_faces as _delete_student_faces,
 )
+from app.services.session_service import revoke_user_sessions
 
 router = APIRouter(prefix="/api/students", tags=["students"])
 
@@ -189,6 +195,10 @@ def delete_student(student_id: int, request: Request, actor=Depends(require_admi
             raise HTTPException(status_code=409, detail="Khong the xoa sinh vien da co lich su don nghi. Hay chuyen sinh vien sang inactive.")
         if not student:
             raise HTTPException(status_code=404, detail="Không tìm thấy sinh viên.")
+        linked_user = user_repository.get_student_user_by_student_id(db, student_id)
+        if linked_user:
+            user_repository.update_user_status(db, linked_user["id"], "inactive")
+            revoke_user_sessions(db, linked_user["id"])
         student_repository.clear_student_access_log_links(db, student_id)
         student_repository.delete_student_work_time(db, student_id)
         student_repository.delete_student_attendance_records(db, student_id)
@@ -207,9 +217,15 @@ def delete_student(student_id: int, request: Request, actor=Depends(require_admi
                 "class_name": student["class_name"],
                 "status": student["status"],
                 "deleted_face_count": len(image_paths),
+                "linked_user_id": linked_user["id"] if linked_user else None,
+                "linked_user_deactivated": bool(linked_user),
+                "linked_user_sessions_revoked": bool(linked_user),
             },
             request,
         )
     face_embedding_cache.invalidate()
     _delete_face_image_files(image_paths)
-    return {"ok": True}
+    return {
+        "ok": True,
+        "linked_user_deactivated": bool(linked_user),
+    }
