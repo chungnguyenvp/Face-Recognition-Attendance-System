@@ -336,6 +336,9 @@ Cấu hình RTSP/IP camera:
 AUTO_START_CAMERAS=true
 CHECK_IN_CAMERA_SOURCE=rtsp://user:pass@192.168.1.50:554/stream1
 CHECK_OUT_CAMERA_SOURCE=rtsp://user:pass@192.168.1.51:554/stream1
+REALTIME_CAMERA_MODE=server
+SERVER_CAMERA_PREVIEW_FPS=8
+SERVER_CAMERA_JPEG_QUALITY=80
 ```
 
 Lưu ý:
@@ -351,6 +354,8 @@ API điều khiển server camera. Tất cả endpoint yêu cầu session hợp 
 
 ```text
 GET  /api/server-cameras/status
+GET  /api/server-cameras/check_in/stream
+GET  /api/server-cameras/check_out/stream
 POST /api/server-cameras/check_in/start
 POST /api/server-cameras/check_in/stop
 POST /api/server-cameras/check_out/start
@@ -358,6 +363,17 @@ POST /api/server-cameras/check_out/stop
 POST /api/server-cameras/start-all
 POST /api/server-cameras/stop-all
 ```
+
+`REALTIME_CAMERA_MODE=browser` giữ luồng webcam trình duyệt gửi JPEG qua
+WebSocket. `REALTIME_CAMERA_MODE=server` chuyển dashboard sang camera do backend
+quản lý: hình ảnh được phát bằng MJPEG, nút bật/tắt gọi API server camera và
+canvas lấy `last_result` từ API trạng thái để vẽ bounding box. Đóng trình duyệt
+không dừng camera backend; khi `AUTO_START_CAMERAS=true`, camera vẫn nhận diện và
+ghi log dù không có người mở dashboard.
+
+Endpoint MJPEG dùng chung camera thread đang chạy, không mở thêm `VideoCapture`
+cho từng người xem. Endpoint yêu cầu tài khoản `admin` hoặc `lab_manager`, không
+cache hình ảnh và API trạng thái che thông tin đăng nhập nằm trong URL RTSP.
 
 Mỗi lần khởi động camera và mỗi kết nối WebSocket có một realtime session scope
 riêng. Phiếu liveness, trạng thái người chưa nhận diện và cleanup chỉ hoạt động

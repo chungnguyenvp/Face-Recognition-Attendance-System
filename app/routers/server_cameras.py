@@ -1,8 +1,16 @@
-from fastapi import APIRouter, Depends, HTTPException
+import time
 
-from app.routers.deps import require_admin, require_admin_or_lab_manager
+from fastapi import APIRouter, Cookie, Depends, HTTPException
+from fastapi.responses import StreamingResponse
+
+from app.routers.deps import (
+    STAFF_ROLES,
+    require_admin,
+    require_admin_or_lab_manager,
+    user_from_session_token,
+)
 from app.schemas.server_cameras import CameraStartPayload
-from app.services.server_camera_service import server_camera_manager
+from app.services.server_camera_service import MJPEG_BOUNDARY, server_camera_manager
 
 
 router = APIRouter(prefix="/api/server-cameras", tags=["server-cameras"])
@@ -17,6 +25,42 @@ def _validate_action(action: str) -> str:
 @router.get("/status", dependencies=[Depends(require_admin_or_lab_manager)])
 def camera_status():
     return server_camera_manager.status()
+
+
+def _authorized_camera_stream(action: str, session_token: str | None, actor: dict):
+    last_auth_check = time.monotonic()
+    for chunk in server_camera_manager.mjpeg_stream(action):
+        now = time.monotonic()
+        if now - last_auth_check >= 5.0:
+            current = user_from_session_token(session_token)
+            if (
+                not current
+                or current.get("id") != actor.get("id")
+                or current.get("status") != "active"
+                or current.get("role") not in STAFF_ROLES
+            ):
+                return
+            last_auth_check = now
+        yield chunk
+
+
+@router.get("/{action}/stream")
+def camera_stream(
+    action: str,
+    session_token: str | None = Cookie(default=None),
+    actor=Depends(require_admin_or_lab_manager),
+):
+    active_action = _validate_action(action)
+    if not server_camera_manager.status(active_action)["running"]:
+        raise HTTPException(status_code=409, detail="Camera is not running.")
+    return StreamingResponse(
+        _authorized_camera_stream(active_action, session_token, actor),
+        media_type=f"multipart/x-mixed-replace; boundary={MJPEG_BOUNDARY}",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/{action}/start")

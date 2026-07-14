@@ -18,7 +18,10 @@ class Settings(BaseSettings):
     check_in_camera_source: str = ""
     check_out_camera_source: str = ""
     server_camera_process_interval_seconds: float = 0.25
+    server_camera_preview_fps: float = 8.0
+    server_camera_jpeg_quality: int = 80
     camera_reconnect_seconds: float = 5.0
+    realtime_camera_mode: str = "browser"
     default_admin_username: str = "admin"
     default_admin_password: str = "admin123"
     login_max_failed_attempts: int = 10

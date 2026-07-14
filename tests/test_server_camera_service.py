@@ -2,7 +2,7 @@ import unittest
 from unittest.mock import patch
 
 from app.services import realtime_session_service
-from app.services.server_camera_service import ServerCameraManager
+from app.services.server_camera_service import MJPEG_BOUNDARY, ServerCameraManager
 
 
 class FakeThread:
@@ -107,6 +107,52 @@ class ServerCameraManagerTests(unittest.TestCase):
 
         self.assertFalse(realtime_session_service._presence_sessions)
         self.assertIsNone(runtime.session_scope)
+
+    def test_mjpeg_stream_publishes_latest_frame_without_opening_camera(self):
+        manager = ServerCameraManager()
+        runtime = manager._cameras["check_in"]
+        runtime.running = True
+        frame = type("Frame", (), {"shape": (360, 640, 3)})()
+
+        sequence = manager._publish_preview("check_in", frame, b"jpeg-data")
+        stream = manager.mjpeg_stream("check_in")
+        chunk = next(stream)
+        stream.close()
+
+        self.assertEqual(sequence, 1)
+        self.assertIn(f"--{MJPEG_BOUNDARY}\r\n".encode(), chunk)
+        self.assertIn(b"Content-Type: image/jpeg", chunk)
+        self.assertIn(b"X-Frame-Sequence: 1", chunk)
+        self.assertTrue(chunk.endswith(b"jpeg-data\r\n"))
+        self.assertEqual(runtime.frame_width, 640)
+        self.assertEqual(runtime.frame_height, 360)
+
+    def test_status_exposes_frame_metadata_but_not_jpeg_bytes(self):
+        manager = ServerCameraManager()
+        runtime = manager._cameras["check_out"]
+        runtime.running = True
+        frame = type("Frame", (), {"shape": (720, 1280, 3)})()
+        manager._publish_preview("check_out", frame, b"private-jpeg")
+
+        status = manager.status("check_out")
+
+        self.assertEqual(status["frame_width"], 1280)
+        self.assertEqual(status["frame_height"], 720)
+        self.assertEqual(status["frame_sequence"], 1)
+        self.assertNotIn("latest_jpeg", status)
+        self.assertNotIn(b"private-jpeg", status.values())
+
+    def test_status_redacts_camera_source_credentials(self):
+        manager = ServerCameraManager()
+        manager._cameras["check_in"].source = (
+            "rtsp://camera-user:camera-password@192.168.1.50:554/stream1?token=secret"
+        )
+
+        source = manager.status("check_in")["source"]
+
+        self.assertEqual(source, "rtsp://***@192.168.1.50:554/stream1")
+        self.assertNotIn("camera-password", source)
+        self.assertNotIn("secret", source)
 
 
 if __name__ == "__main__":

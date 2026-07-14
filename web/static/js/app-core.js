@@ -19,11 +19,14 @@ const FACE_AUTO_STABLE_FRAMES = 2;
 const REALTIME_FRAME_MAX_WIDTH = 640;
 const REALTIME_SEND_INTERVAL_MS = 160;
 const REALTIME_JPEG_QUALITY = 0.62;
+const SERVER_CAMERA_STATUS_INTERVAL_MS = 400;
 
 const realtimeSessions = {
-  check_in: { stream: null, ws: null, sendTimer: null, busy: false, stopping: false },
-  check_out: { stream: null, ws: null, sendTimer: null, busy: false, stopping: false },
+  check_in: { stream: null, ws: null, sendTimer: null, busy: false, stopping: false, serverRunning: false, serverStreamAttached: false, lastResultSequence: -1 },
+  check_out: { stream: null, ws: null, sendTimer: null, busy: false, stopping: false, serverRunning: false, serverStreamAttached: false, lastResultSequence: -1 },
 };
+let serverCameraStatusTimer = null;
+let serverCameraStatusBusy = false;
 
 function cookieValue(name) {
   return document.cookie

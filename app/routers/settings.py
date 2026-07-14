@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Request
+from app.core.config import settings
 from app.db import get_db
 from app.repositories import settings_repository
 from app.routers.deps import require_admin, require_admin_or_lab_manager
@@ -12,7 +13,11 @@ router = APIRouter(prefix="/api/settings", tags=["settings"])
 @router.get("", dependencies=[Depends(require_admin_or_lab_manager)])
 def get_settings():
     with get_db() as db:
-        return settings_repository.get_settings_map(db)
+        values = settings_repository.get_settings_map(db)
+    values["realtime_camera_mode"] = (
+        "server" if settings.realtime_camera_mode.lower() == "server" else "browser"
+    )
+    return values
 
 
 @router.get("/liveness-status", dependencies=[Depends(require_admin_or_lab_manager)])

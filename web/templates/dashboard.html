@@ -6,7 +6,7 @@
   <title>Face Lab Dashboard</title>
   <link rel="stylesheet" href="/static/css/dashboard-layout.css?v=font-ui-11" />
   <link rel="stylesheet" href="/static/css/dashboard-components.css?v=font-ui-11" />
-  <link rel="stylesheet" href="/static/css/dashboard-features.css?v=settings-layout-3" />
+  <link rel="stylesheet" href="/static/css/dashboard-features.css?v=server-camera-1" />
 </head>
 <body>
   <div class="app-shell">
@@ -145,18 +145,18 @@
             <div class="camera-actions">
               <button id="checkInToggleBtn" onclick="toggleRealtimeCamera('check_in')">Vào on</button>
               <button id="checkOutToggleBtn" onclick="toggleRealtimeCamera('check_out')">Out on</button>
-              <button class="secondary" onclick="stopAllRealtimeCameras()">Tắt hết</button>
+              <button id="stopAllCameraBtn" class="secondary" onclick="stopAllRealtimeCameras()">Tắt hết</button>
             </div>
           </div>
           <div class="dual-camera-grid">
             <div class="camera-panel">
               <div class="camera-panel-header"><h4>Check-in</h4><span id="checkInCameraLabel">Chưa bật</span></div>
-              <div class="video-wrap"><video id="checkInVideo" autoplay playsinline muted></video><canvas id="checkInOverlay"></canvas></div>
+              <div class="video-wrap"><video id="checkInVideo" autoplay playsinline muted></video><img id="checkInServerStream" class="server-camera-stream" alt="Camera check-in" hidden><canvas id="checkInOverlay"></canvas></div>
               <div id="checkInResult" class="camera-result">Chưa bật camera</div>
             </div>
             <div class="camera-panel">
               <div class="camera-panel-header"><h4>Check-out</h4><span id="checkOutCameraLabel">Chưa bật</span></div>
-              <div class="video-wrap"><video id="checkOutVideo" autoplay playsinline muted></video><canvas id="checkOutOverlay"></canvas></div>
+              <div class="video-wrap"><video id="checkOutVideo" autoplay playsinline muted></video><img id="checkOutServerStream" class="server-camera-stream" alt="Camera check-out" hidden><canvas id="checkOutOverlay"></canvas></div>
               <div id="checkOutResult" class="camera-result">Chưa bật camera</div>
             </div>
           </div>
@@ -575,11 +575,11 @@
     </div>
   </div>
 
-  <script src="/static/js/app-core.js?v=today-filter-1"></script>
+  <script src="/static/js/app-core.js?v=server-camera-1"></script>
   <script src="/static/js/app-dashboard-accounts.js?v=font-ui-11"></script>
   <script src="/static/js/app-students-face.js?v=student-face-register-fix-2"></script>
   <script src="/static/js/app-attendance-alerts.js?v=audit-content-detail-2"></script>
-  <script src="/static/js/app-settings-realtime.js?v=settings-layout-3"></script>
+  <script src="/static/js/app-settings-realtime.js?v=server-camera-1"></script>
   <script src="/static/js/app-work-schedule.js?v=work-schedule-1"></script>
   <script src="/static/js/app-leave-requests.js?v=leave-requests-1"></script>
   <script src="/static/js/app-student-reports.js?v=student-reports-2"></script>
