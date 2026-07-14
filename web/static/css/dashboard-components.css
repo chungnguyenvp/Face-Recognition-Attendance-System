@@ -169,6 +169,72 @@
   overflow-x: hidden;
 }
 
+.attendance-export-modal-content {
+  width: min(720px, 94vw);
+  max-height: 88vh;
+  overflow-y: auto;
+}
+
+.attendance-export-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.attendance-export-grid label,
+.attendance-export-sheets legend {
+  color: #334155;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.attendance-export-grid input,
+.attendance-export-grid select {
+  margin-top: 7px;
+}
+
+.attendance-export-wide {
+  grid-column: 1 / -1;
+}
+
+.attendance-export-sheets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid #dbe4ef;
+  border-radius: 10px;
+}
+
+.attendance-export-sheets label {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.attendance-export-sheets input {
+  width: auto;
+  margin: 0;
+}
+
+.error-message {
+  color: #b91c1c;
+}
+
+@media (max-width: 640px) {
+  .attendance-export-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .attendance-export-wide {
+    grid-column: auto;
+  }
+}
+
 .attendance-detail {
   display: grid;
   gap: 16px;

@@ -18,6 +18,7 @@ from app.routers import (
     audit_logs,
     auth,
     dashboard,
+    exports,
     face_registration_requests,
     files,
     health,
@@ -68,6 +69,7 @@ app.include_router(alerts.router)
 app.include_router(attendance.router)
 app.include_router(audit_logs.router)
 app.include_router(dashboard.router)
+app.include_router(exports.router)
 app.include_router(files.router)
 app.include_router(health.router)
 app.include_router(leave_requests.student_router)

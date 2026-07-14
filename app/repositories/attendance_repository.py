@@ -1,6 +1,3 @@
-from app.repositories.query_filters import append_attendance_date_filters
-
-
 def get_student_attendance_config(db, student_id: int):
     return db.execute(
         "SELECT work_start_time, work_end_time FROM student_attendance_settings WHERE student_id=?",
@@ -227,23 +224,33 @@ def list_attendance_records(
     date_to: str | None = None,
     status: str | None = None,
     q: str | None = None,
+    class_name: str | None = None,
 ):
     clauses = ["1=1"]
     params = []
-    append_attendance_date_filters(clauses, params, date_from, date_to)
+    if date_from:
+        clauses.append("date(ar.attendance_date) >= date(?)")
+        params.append(date_from)
+    if date_to:
+        clauses.append("date(ar.attendance_date) <= date(?)")
+        params.append(date_to)
     if status:
-        clauses.append("status=?")
+        clauses.append("ar.status=?")
         params.append(status)
     if q:
-        clauses.append("(student_code LIKE ? OR full_name LIKE ?)")
+        clauses.append("(ar.student_code LIKE ? OR ar.full_name LIKE ?)")
         like = f"%{q}%"
         params.extend([like, like])
+    if class_name:
+        clauses.append("COALESCE(s.class_name, '') LIKE ?")
+        params.append(f"%{class_name}%")
     safe_limit = max(1, min(int(limit), 1000))
     return db.execute(
         f"""
-        SELECT * FROM attendance_records
+        SELECT ar.* FROM attendance_records ar
+        LEFT JOIN students s ON s.id = ar.student_id
         WHERE {' AND '.join(clauses)}
-        ORDER BY attendance_date DESC, full_name ASC, id ASC
+        ORDER BY ar.attendance_date DESC, ar.full_name ASC, ar.id ASC
         LIMIT ?
         """,
         (*params, safe_limit),

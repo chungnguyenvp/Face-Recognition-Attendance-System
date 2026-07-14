@@ -30,6 +30,7 @@ Dự án chạy bằng FastAPI, giao diện HTML/CSS/JavaScript thuần, SQLite 
 - [Chống Giả Mạo Khuôn Mặt](#chống-giả-mạo-khuôn-mặt)
 - [Camera Và RTSP](#camera-và-rtsp)
 - [Báo Cáo Sinh Viên](#báo-cáo-sinh-viên)
+- [Xuất Báo Cáo Chấm Công](#xuất-báo-cáo-chấm-công)
 - [Lưu Trữ Dữ Liệu Riêng Tư](#lưu-trữ-dữ-liệu-riêng-tư)
 - [Kiểm Thử](#kiểm-thử)
 - [Cấu Trúc Thư Mục](#cấu-trúc-thư-mục)
@@ -52,6 +53,7 @@ Dự án chạy bằng FastAPI, giao diện HTML/CSS/JavaScript thuần, SQLite 
 - Quản lý lịch sử ra/vào, cảnh báo khuôn mặt lạ và xử lý thiếu checkout.
 - Quản lý đơn nghỉ phép: sinh viên tạo đơn, lab manager duyệt/từ chối, admin có thể thu hồi.
 - Quản lý báo cáo sinh viên: nộp file hoặc link, phản hồi, yêu cầu chỉnh sửa, duyệt và lưu lịch sử các lần nộp.
+- Xuất báo cáo chấm công Excel theo ngày, trạng thái, sinh viên và lớp.
 - Ghi audit log cho các hành động quan trọng.
 
 ---
@@ -247,6 +249,7 @@ TRUSTED_HOSTS=<domain-hoac-ip-duoc-phep>
 | Tạo tài khoản student | Có | Có | Không |
 | Đơn nghỉ phép | Quản lý/thu hồi | Duyệt/từ chối | Tạo và theo dõi |
 | Báo cáo sinh viên | Giám sát/xử lý | Phản hồi và duyệt | Nộp và nộp lại |
+| Xuất báo cáo chấm công Excel | Có | Có | Không |
 
 ---
 
@@ -397,6 +400,39 @@ PDF, DOC, DOCX, PPT, PPTX, XLSX, ZIP, PNG, JPG, JPEG
 ```
 
 Mỗi file tối đa 20 MB.
+
+---
+
+## Xuất Báo Cáo Chấm Công
+
+Admin và lab manager có thể mở mục **Điểm danh**, lọc theo khoảng ngày, trạng thái, mã/tên sinh viên hoặc lớp rồi chọn **Xuất Excel**.
+
+File `.xlsx` gồm tối đa hai trang tùy lựa chọn:
+
+- `Tong_hop`: thống kê theo sinh viên, gồm ngày cần hiện diện, ngày có mặt, đi muộn, về sớm, vắng, nghỉ phép, thiếu checkout và tỷ lệ hiện diện.
+- `Chi_tiet`: từng bản ghi chấm công, giờ vào/ra, trạng thái, số phút vi phạm, tổng giờ và ghi chú.
+
+API tương ứng:
+
+```http
+POST /api/exports/attendance
+Content-Type: application/json
+X-CSRF-Token: <csrf_token>
+```
+
+```json
+{
+  "date_from": "2026-07-01",
+  "date_to": "2026-07-31",
+  "status": null,
+  "q": null,
+  "class_name": null,
+  "include_summary": true,
+  "include_details": true
+}
+```
+
+Mỗi lần xuất tối đa 366 ngày và 50.000 dòng. Thao tác xuất không tự tính lại dữ liệu chấm công, được ghi audit log, và file không chứa ảnh, embedding khuôn mặt, bằng chứng camera hay thông tin đăng nhập.
 
 ---
 

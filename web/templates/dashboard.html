@@ -194,11 +194,13 @@
           <div class="card-header">
             <h3>Điểm danh</h3>
             <div>
+              <button class="secondary" onclick="openAttendanceExportModal()">Xuất Excel</button>
               <button onclick="loadAttendanceRecords()">Tải lại</button>
             </div>
           </div>
           <div class="filter-panel">
             <input id="attendanceSearch" class="search-input" placeholder="Tìm mã SV hoặc họ tên" />
+            <input id="attendanceClassFilter" class="search-input" placeholder="Lọc theo lớp" />
             <select id="attendanceStatusFilter">
               <option value="">Tất cả trạng thái</option>
               <option value="present_on_time">Đúng giờ</option>
@@ -534,6 +536,44 @@
     </div>
   </div>
 
+  <div id="attendanceExportModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="attendanceExportTitle">
+    <div class="modal-content attendance-export-modal-content">
+      <div class="card-header">
+        <div>
+          <h3 id="attendanceExportTitle">Xuất báo cáo chấm công</h3>
+          <p class="muted">Bộ lọc hiện tại được sao chép sang báo cáo. Tối đa 366 ngày.</p>
+        </div>
+        <button class="secondary" type="button" onclick="closeAttendanceExportModal()">Đóng</button>
+      </div>
+      <div class="attendance-export-grid">
+        <label>Từ ngày<input id="exportAttendanceDateFrom" type="date" /></label>
+        <label>Đến ngày<input id="exportAttendanceDateTo" type="date" /></label>
+        <label>Trạng thái<select id="exportAttendanceStatus">
+          <option value="">Tất cả trạng thái</option>
+          <option value="present_on_time">Đúng giờ</option><option value="late">Đi muộn</option>
+          <option value="early_leave">Về sớm</option><option value="late_and_early_leave">Muộn + về sớm</option>
+          <option value="missing_checkout">Thiếu check-out</option><option value="absent">Vắng</option>
+          <option value="leave_approved">Nghỉ có phép</option><option value="leave_pending">Chờ duyệt nghỉ</option>
+          <option value="pending">Chưa ghi nhận</option><option value="unfinalized">Chưa chốt</option>
+          <option value="off_day">Ngày nghỉ</option>
+        </select></label>
+        <label>Lớp<input id="exportAttendanceClass" maxlength="120" placeholder="Tất cả lớp" /></label>
+        <label class="attendance-export-wide">Tìm mã SV hoặc họ tên<input id="exportAttendanceQuery" maxlength="120" /></label>
+      </div>
+      <fieldset class="attendance-export-sheets">
+        <legend>Nội dung file</legend>
+        <label><input id="exportIncludeSummary" type="checkbox" checked /> Trang Tổng hợp</label>
+        <label><input id="exportIncludeDetails" type="checkbox" checked /> Trang Chi tiết</label>
+      </fieldset>
+      <p class="muted">File không chứa ảnh, dữ liệu khuôn mặt, bằng chứng camera hoặc thông tin đăng nhập.</p>
+      <div class="modal-actions">
+        <button id="attendanceExportSubmit" type="button" onclick="exportAttendanceXlsx()">Tải file Excel</button>
+        <button class="secondary" type="button" onclick="closeAttendanceExportModal()">Hủy</button>
+      </div>
+      <div id="attendanceExportMessage" class="message" aria-live="polite"></div>
+    </div>
+  </div>
+
   <div id="leaveReviewModal" class="modal hidden">
     <div class="modal-content leave-review-modal-content">
       <h3 id="leaveReviewTitle">Xử lý đơn nghỉ</h3>
@@ -570,6 +610,7 @@
   <script src="/static/js/app-dashboard-accounts.js?v=font-ui-11"></script>
   <script src="/static/js/app-students-face.js?v=student-face-register-fix-2"></script>
   <script src="/static/js/app-attendance-alerts.js?v=audit-content-detail-2"></script>
+  <script src="/static/js/app-exports.js?v=attendance-export-1"></script>
   <script src="/static/js/app-settings-realtime.js?v=server-camera-2"></script>
   <script src="/static/js/app-work-schedule.js?v=work-schedule-1"></script>
   <script src="/static/js/app-leave-requests.js?v=leave-requests-1"></script>
