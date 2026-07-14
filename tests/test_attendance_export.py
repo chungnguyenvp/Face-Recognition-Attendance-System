@@ -94,7 +94,6 @@ class AttendanceExportApiTests(unittest.TestCase):
             "date_to": "2026-07-31",
             "status": None,
             "q": None,
-            "class_name": None,
             "include_summary": True,
             "include_details": True,
         }
@@ -172,7 +171,7 @@ class AttendanceExportApiTests(unittest.TestCase):
 
         filtered = self.post_export(
             client,
-            self.payload(class_name="CNTT", q="SV001", status="present_on_time", include_summary=False),
+            self.payload(q="SV001", status="present_on_time", include_summary=False),
         )
         self.assertEqual(filtered.status_code, 200, filtered.text)
         _, parts = self.workbook_parts(filtered)
@@ -205,7 +204,7 @@ class AttendanceExportApiTests(unittest.TestCase):
         self.login(client)
         response = self.post_export(
             client,
-            self.payload(class_name="BULK", include_summary=False, include_details=True),
+            self.payload(q="Bulk Student", include_summary=False, include_details=True),
         )
         self.assertEqual(response.status_code, 200, response.text)
         _, parts = self.workbook_parts(response)
@@ -238,6 +237,20 @@ class AttendanceExportServiceTests(unittest.TestCase):
         payload = AttendanceExportRequest(date_from="2026-07-01", date_to="2026-07-01")
         with self.assertRaises(ExportRowLimitError):
             build_attendance_workbook(rows, payload, {"username": "admin", "role": "admin"})
+
+
+class AttendanceExportDashboardContractTests(unittest.TestCase):
+    def test_export_defaults_to_all_students_and_has_no_class_filter(self):
+        project_root = Path(__file__).resolve().parents[1]
+        template = (project_root / "web" / "templates" / "dashboard.html").read_text(encoding="utf-8")
+        script = (project_root / "web" / "static" / "js" / "app-exports.js").read_text(encoding="utf-8")
+
+        self.assertNotIn("exportAttendanceClass", template)
+        self.assertNotIn("attendanceClassFilter", template)
+        self.assertIn("Chỉ xuất sinh viên (không bắt buộc)", template)
+        self.assertIn("setInputValue('exportAttendanceQuery', '');", script)
+        self.assertNotIn("copyAttendanceExportFilter('attendanceSearch'", script)
+        self.assertNotIn("class_name", script)
 
 
 if __name__ == "__main__":

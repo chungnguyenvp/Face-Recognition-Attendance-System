@@ -7,7 +7,6 @@ def list_attendance_export_rows(
     date_to: str,
     status: str | None = None,
     q: str | None = None,
-    class_name: str | None = None,
 ):
     clauses = [
         "date(ar.attendance_date) >= date(?)",
@@ -21,10 +20,6 @@ def list_attendance_export_rows(
         clauses.append("(ar.student_code LIKE ? OR ar.full_name LIKE ?)")
         like = f"%{q}%"
         params.extend([like, like])
-    if class_name:
-        clauses.append("COALESCE(s.class_name, '') LIKE ?")
-        params.append(f"%{class_name}%")
-
     return db.execute(
         f"""
         SELECT

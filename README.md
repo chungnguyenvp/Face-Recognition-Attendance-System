@@ -53,7 +53,7 @@ Dự án chạy bằng FastAPI, giao diện HTML/CSS/JavaScript thuần, SQLite 
 - Quản lý lịch sử ra/vào, cảnh báo khuôn mặt lạ và xử lý thiếu checkout.
 - Quản lý đơn nghỉ phép: sinh viên tạo đơn, lab manager duyệt/từ chối, admin có thể thu hồi.
 - Quản lý báo cáo sinh viên: nộp file hoặc link, phản hồi, yêu cầu chỉnh sửa, duyệt và lưu lịch sử các lần nộp.
-- Xuất báo cáo chấm công Excel theo ngày, trạng thái, sinh viên và lớp.
+- Xuất báo cáo chấm công Excel theo ngày, trạng thái và sinh viên.
 - Ghi audit log cho các hành động quan trọng.
 
 ---
@@ -405,7 +405,7 @@ Mỗi file tối đa 20 MB.
 
 ## Xuất Báo Cáo Chấm Công
 
-Admin và lab manager có thể mở mục **Điểm danh**, lọc theo khoảng ngày, trạng thái, mã/tên sinh viên hoặc lớp rồi chọn **Xuất Excel**.
+Admin và lab manager có thể mở mục **Điểm danh**, chọn **Xuất Excel**, sau đó lọc theo khoảng ngày, trạng thái hoặc một sinh viên cụ thể. Để trống ô sinh viên để xuất tất cả.
 
 File `.xlsx` gồm tối đa hai trang tùy lựa chọn:
 
@@ -426,7 +426,6 @@ X-CSRF-Token: <csrf_token>
   "date_to": "2026-07-31",
   "status": null,
   "q": null,
-  "class_name": null,
   "include_summary": true,
   "include_details": true
 }

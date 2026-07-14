@@ -15,8 +15,7 @@ function openAttendanceExportModal() {
   copyAttendanceExportFilter('attendanceDateFrom', 'exportAttendanceDateFrom');
   copyAttendanceExportFilter('attendanceDateTo', 'exportAttendanceDateTo');
   copyAttendanceExportFilter('attendanceStatusFilter', 'exportAttendanceStatus');
-  copyAttendanceExportFilter('attendanceSearch', 'exportAttendanceQuery');
-  copyAttendanceExportFilter('attendanceClassFilter', 'exportAttendanceClass');
+  setInputValue('exportAttendanceQuery', '');
   setAttendanceExportMessage('');
   const modal = document.getElementById('attendanceExportModal');
   if (modal) modal.classList.remove('hidden');
@@ -30,13 +29,11 @@ function closeAttendanceExportModal() {
 function attendanceExportPayload() {
   const status = getInputValue('exportAttendanceStatus');
   const query = getInputValue('exportAttendanceQuery');
-  const className = getInputValue('exportAttendanceClass');
   return {
     date_from: getInputValue('exportAttendanceDateFrom'),
     date_to: getInputValue('exportAttendanceDateTo'),
     status: status || null,
     q: query || null,
-    class_name: className || null,
     include_summary: Boolean(document.getElementById('exportIncludeSummary')?.checked),
     include_details: Boolean(document.getElementById('exportIncludeDetails')?.checked),
   };

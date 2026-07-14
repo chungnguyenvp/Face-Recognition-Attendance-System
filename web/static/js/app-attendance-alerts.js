@@ -49,7 +49,6 @@ function resetAlertFilters() {
 function resetAttendanceFilters() {
   const today = todayDateValue();
   setInputValue('attendanceSearch', '');
-  setInputValue('attendanceClassFilter', '');
   setInputValue('attendanceStatusFilter', '');
   setInputValue('attendanceDateFrom', today);
   setInputValue('attendanceDateTo', today);
@@ -101,7 +100,6 @@ async function loadAttendanceRecords() {
   appendFilter(params, 'attendanceDateTo', 'date_to');
   appendFilter(params, 'attendanceStatusFilter', 'status');
   appendFilter(params, 'attendanceSearch', 'q');
-  appendFilter(params, 'attendanceClassFilter', 'class_name');
   const data = await api(`/api/attendance-records?${params.toString()}`);
   document.getElementById('attendanceTable').innerHTML =
     data.items.map(renderAttendanceRow).join('') ||

@@ -243,8 +243,7 @@ def _worksheet_xml(
 def _filter_description(payload) -> str:
     status = STATUS_LABELS.get(payload.status, "Tất cả trạng thái") if payload.status else "Tất cả trạng thái"
     query = payload.q or "Không"
-    class_name = payload.class_name or "Tất cả lớp"
-    return f"Trạng thái: {status} | Tìm kiếm: {query} | Lớp: {class_name}"
+    return f"Trạng thái: {status} | Sinh viên: {query if payload.q else 'Tất cả'}"
 
 
 def _text_cell(value: object, style: int = 0) -> dict:

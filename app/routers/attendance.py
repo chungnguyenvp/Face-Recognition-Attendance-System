@@ -36,13 +36,10 @@ def attendance_records(
     date_to: str | None = None,
     status: str | None = None,
     q: str | None = None,
-    class_name: str | None = None,
 ):
     recalculate_attendance_records(date_from, date_to)
     with get_db() as db:
-        rows = attendance_repository.list_attendance_records(
-            db, limit, date_from, date_to, status, q, class_name
-        )
+        rows = attendance_repository.list_attendance_records(db, limit, date_from, date_to, status, q)
         items = [_attendance_record_item(db, r) for r in rows]
     return {"items": items, "count": len(rows)}
 

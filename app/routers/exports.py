@@ -22,7 +22,6 @@ def export_attendance(
         "date_to": payload.date_to.isoformat(),
         "status": payload.status,
         "q": payload.q,
-        "class_name": payload.class_name,
         "include_summary": payload.include_summary,
         "include_details": payload.include_details,
     }
@@ -33,7 +32,6 @@ def export_attendance(
             filters["date_to"],
             payload.status,
             payload.q,
-            payload.class_name,
         )
         try:
             workbook, row_count, filename = build_attendance_workbook(rows, payload, actor)

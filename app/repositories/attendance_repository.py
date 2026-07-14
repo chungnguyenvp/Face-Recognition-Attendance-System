@@ -224,7 +224,6 @@ def list_attendance_records(
     date_to: str | None = None,
     status: str | None = None,
     q: str | None = None,
-    class_name: str | None = None,
 ):
     clauses = ["1=1"]
     params = []
@@ -241,14 +240,10 @@ def list_attendance_records(
         clauses.append("(ar.student_code LIKE ? OR ar.full_name LIKE ?)")
         like = f"%{q}%"
         params.extend([like, like])
-    if class_name:
-        clauses.append("COALESCE(s.class_name, '') LIKE ?")
-        params.append(f"%{class_name}%")
     safe_limit = max(1, min(int(limit), 1000))
     return db.execute(
         f"""
         SELECT ar.* FROM attendance_records ar
-        LEFT JOIN students s ON s.id = ar.student_id
         WHERE {' AND '.join(clauses)}
         ORDER BY ar.attendance_date DESC, ar.full_name ASC, ar.id ASC
         LIMIT ?

@@ -24,11 +24,10 @@ class AttendanceExportRequest(BaseModel):
     date_to: date
     status: AttendanceExportStatus | None = None
     q: str | None = Field(default=None, max_length=120)
-    class_name: str | None = Field(default=None, max_length=120)
     include_summary: bool = True
     include_details: bool = True
 
-    @field_validator("q", "class_name")
+    @field_validator("q")
     @classmethod
     def normalize_optional_text(cls, value: str | None) -> str | None:
         value = (value or "").strip()

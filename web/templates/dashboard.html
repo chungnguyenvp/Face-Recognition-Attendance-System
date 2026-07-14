@@ -200,7 +200,6 @@
           </div>
           <div class="filter-panel">
             <input id="attendanceSearch" class="search-input" placeholder="Tìm mã SV hoặc họ tên" />
-            <input id="attendanceClassFilter" class="search-input" placeholder="Lọc theo lớp" />
             <select id="attendanceStatusFilter">
               <option value="">Tất cả trạng thái</option>
               <option value="present_on_time">Đúng giờ</option>
@@ -541,7 +540,7 @@
       <div class="card-header">
         <div>
           <h3 id="attendanceExportTitle">Xuất báo cáo chấm công</h3>
-          <p class="muted">Bộ lọc hiện tại được sao chép sang báo cáo. Tối đa 366 ngày.</p>
+          <p class="muted">Khoảng ngày và trạng thái được sao chép. Để trống ô sinh viên để xuất tất cả. Tối đa 366 ngày.</p>
         </div>
         <button class="secondary" type="button" onclick="closeAttendanceExportModal()">Đóng</button>
       </div>
@@ -557,8 +556,7 @@
           <option value="pending">Chưa ghi nhận</option><option value="unfinalized">Chưa chốt</option>
           <option value="off_day">Ngày nghỉ</option>
         </select></label>
-        <label>Lớp<input id="exportAttendanceClass" maxlength="120" placeholder="Tất cả lớp" /></label>
-        <label class="attendance-export-wide">Tìm mã SV hoặc họ tên<input id="exportAttendanceQuery" maxlength="120" /></label>
+        <label class="attendance-export-wide">Chỉ xuất sinh viên (không bắt buộc)<input id="exportAttendanceQuery" maxlength="120" placeholder="Để trống để xuất tất cả sinh viên" /></label>
       </div>
       <fieldset class="attendance-export-sheets">
         <legend>Nội dung file</legend>
